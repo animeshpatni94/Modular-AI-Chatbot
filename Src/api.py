@@ -1,25 +1,11 @@
 from flask import Flask, request, Response, jsonify, send_from_directory
-import configparser
-import importlib
 import uuid
 from collections import defaultdict
-from llm_factory import LLMFactory
+from provider_manager import ProviderManager
 
 app = Flask(__name__)
-
 session_histories = defaultdict(list)
-factory = LLMFactory()
-factory.register_provider('ollama', 'ollama_layer')
-factory.register_provider('azureai', 'azureai_layer')
-config = configparser.ConfigParser()
-config.read('config.ini')
-provider_name = config.get('DEFAULT', 'provider', fallback='ollama').lower()
-provider_module_name = factory.get_provider(provider_name)
-provider_module = importlib.import_module(provider_module_name)
-provider_class = getattr(provider_module, 'Provider')
-provider_instance = provider_class()
-
-print(f"Using provider: {provider_name} ({provider_module_name})")
+manager = ProviderManager()
 
 @app.route('/chat', methods=['POST'])
 def chat_endpoint():
@@ -39,7 +25,7 @@ def chat_endpoint():
         if stream:
             def generate():
                 full_response = ""
-                for token in provider_instance.stream_chat_response(messages_for_llm):
+                for token in manager.llm_provider.stream_chat_response(messages_for_llm):
                     full_response += token
                     yield token
                 session_histories[session_id].extend([
@@ -53,7 +39,7 @@ def chat_endpoint():
                 headers={'X-Session-Id': session_id}
             )
         else:
-            response = provider_instance.get_complete_response(messages_for_llm)
+            response = manager.llm_provider.get_complete_response(messages_for_llm)
             session_histories[session_id].extend([
                 new_user_message,
                 {"role": "assistant", "content": response}
@@ -68,27 +54,34 @@ def chat_endpoint():
 
 @app.route('/switch', methods=['POST'])
 def switch_provider():
-    global provider_name, provider_module, provider_module_name, provider_instance
     try:
         data = request.get_json()
         new_provider = data.get('provider', '').lower()
+        provider_type = data.get('provider_type', 'llm')  # 'llm' or 'embedding'
         if not new_provider:
             return jsonify({'error': 'No provider specified'}), 400
-        new_module_name = factory.get_provider(new_provider)
-        new_module = importlib.import_module(new_module_name)
-        new_provider_class = getattr(new_module, 'Provider')
-        new_provider_instance = new_provider_class()
-        config.set('DEFAULT', 'provider', new_provider)
-        with open('config.ini', 'w') as configfile:
-            config.write(configfile)
-        provider_name = new_provider
-        provider_module_name = new_module_name
-        provider_module = new_module
-        provider_instance = new_provider_instance
+        manager.switch_provider(new_provider, provider_type)
         return jsonify({
             'status': 'success',
-            'message': f'Switched to {provider_name} provider'
+            'message': f'Switched to {new_provider} provider ({provider_type})'
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/embed', methods=['POST'])
+def embed_endpoint():
+    try:
+        data = request.get_json()
+        text = data.get('text')
+        texts = data.get('texts')
+        if not text and not texts:
+            return jsonify({'error': 'No text provided'}), 400
+        if text:
+            embedding = manager.embedding_provider.generate_embedding(text)
+            return jsonify({'embedding': embedding})
+        elif texts:
+            embeddings = manager.embedding_provider.generate_embeddings(texts)
+            return jsonify({'embeddings': embeddings})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -96,8 +89,8 @@ def switch_provider():
 def health_check():
     return jsonify({
         'status': 'healthy',
-        'provider': provider_name,
-        'module': provider_module_name
+        'llm_provider': manager.llm_provider_name,
+        'embedding_provider': manager.embedding_provider_name
     })
 
 @app.route('/chat-widget')
