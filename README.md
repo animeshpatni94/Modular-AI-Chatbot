@@ -1,2 +1,2 @@
-# ModularAIChatbot
-PythonAI Chat: Modular Provider Chatbot API &amp; UI
+# LangChain AI Bot: Modular Provider Chatbot API &amp; UI
+
