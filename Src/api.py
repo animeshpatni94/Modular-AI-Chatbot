@@ -16,6 +16,9 @@ config.read('config.ini')
 provider_name = config.get('DEFAULT', 'provider', fallback='ollama').lower()
 provider_module_name = factory.get_provider(provider_name)
 provider_module = importlib.import_module(provider_module_name)
+provider_class = getattr(provider_module, 'Provider')
+provider_instance = provider_class()
+
 print(f"Using provider: {provider_name} ({provider_module_name})")
 
 @app.route('/chat', methods=['POST'])
@@ -36,7 +39,7 @@ def chat_endpoint():
         if stream:
             def generate():
                 full_response = ""
-                for token in provider_module.stream_chat_response(messages_for_llm):
+                for token in provider_instance.stream_chat_response(messages_for_llm):
                     full_response += token
                     yield token
                 session_histories[session_id].extend([
@@ -50,7 +53,7 @@ def chat_endpoint():
                 headers={'X-Session-Id': session_id}
             )
         else:
-            response = provider_module.get_complete_response(messages_for_llm)
+            response = provider_instance.get_complete_response(messages_for_llm)
             session_histories[session_id].extend([
                 new_user_message,
                 {"role": "assistant", "content": response}
@@ -65,7 +68,7 @@ def chat_endpoint():
 
 @app.route('/switch', methods=['POST'])
 def switch_provider():
-    global provider_name, provider_module, provider_module_name
+    global provider_name, provider_module, provider_module_name, provider_instance
     try:
         data = request.get_json()
         new_provider = data.get('provider', '').lower()
@@ -73,13 +76,15 @@ def switch_provider():
             return jsonify({'error': 'No provider specified'}), 400
         new_module_name = factory.get_provider(new_provider)
         new_module = importlib.import_module(new_module_name)
+        new_provider_class = getattr(new_module, 'Provider')
+        new_provider_instance = new_provider_class()
         config.set('DEFAULT', 'provider', new_provider)
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
         provider_name = new_provider
         provider_module_name = new_module_name
         provider_module = new_module
-
+        provider_instance = new_provider_instance
         return jsonify({
             'status': 'success',
             'message': f'Switched to {provider_name} provider'
