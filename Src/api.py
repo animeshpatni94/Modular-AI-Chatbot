@@ -57,7 +57,7 @@ def switch_provider():
     try:
         data = request.get_json()
         new_provider = data.get('provider', '').lower()
-        provider_type = data.get('provider_type', 'llm')  # 'llm' or 'embedding'
+        provider_type = data.get('provider_type', 'llm')  # 'llm', 'embedding', or 'vectordb'
         if not new_provider:
             return jsonify({'error': 'No provider specified'}), 400
         manager.switch_provider(new_provider, provider_type)
@@ -85,12 +85,46 @@ def embed_endpoint():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/vectordb/store', methods=['POST'])
+def vectordb_store():
+    try:
+        data = request.get_json()
+        texts = data.get('texts')
+        metadatas = data.get('metadatas', None)
+        if not texts:
+            return jsonify({'error': 'No texts provided'}), 400
+        result = manager.vectordb_provider.store_embeddings(texts, metadatas)
+        return jsonify({'status': 'success', 'result': str(result)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/vectordb/search', methods=['POST'])
+def vectordb_search():
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        k = data.get('k', 5)  
+        if not query:
+            return jsonify({'error': 'No query provided'}), 400
+        results = manager.vectordb_provider.search(query, k)
+        formatted_results = []
+        for doc, score in results:
+            formatted_results.append({
+                'content': doc.page_content,
+                'metadata': doc.metadata,
+                'score': score
+            })
+        return jsonify({'results': formatted_results})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
         'status': 'healthy',
         'llm_provider': manager.llm_provider_name,
-        'embedding_provider': manager.embedding_provider_name
+        'embedding_provider': manager.embedding_provider_name,
+        'vectordb_provider': manager.vectordb_provider_name 
     })
 
 @app.route('/chat-widget')
