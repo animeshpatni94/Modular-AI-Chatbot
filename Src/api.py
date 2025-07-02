@@ -14,7 +14,6 @@ def chat_endpoint():
         messages = data.get('messages', [])
         stream = data.get('stream', True)
         session_id = data.get('session_id') or str(uuid.uuid4())
-
         if not messages:
             return jsonify({'error': 'No messages provided'}), 400
 
