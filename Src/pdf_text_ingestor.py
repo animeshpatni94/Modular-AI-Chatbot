@@ -4,13 +4,13 @@ from typing import List, Dict
 from dataclasses import dataclass
 import pdfplumber
 from provider_manager import ProviderManager
-from keybert import KeyBERT
+#from keybert import KeyBERT
 import configparser
 
 @dataclass
 class TextChunk:
     id: str
-    content: str
+    page_content: str
     page_number: int
     metadata: Dict[str, str]
 
@@ -26,17 +26,19 @@ class PDFTextIngestor:
 
             doc_title = self._extract_document_title(pdf_path)
             chunks = self._extract_text_chunks(pdf_path, doc_title)
-            embeddings = self._generate_embeddings([chunk.content for chunk in chunks])
+            embeddings = self._generate_embeddings([chunk.page_content for chunk in chunks])
 
             vectors = []
             for chunk, embedding in zip(chunks, embeddings):
                 vectors.append({
                     "id": chunk.id,
                     "values": embedding,
-                    "metadata": {
-                        "content": chunk.content,
-                        "page": chunk.page_number,
-                        **chunk.metadata
+                    "payload": {
+                        "page_content": chunk.page_content,
+                        "metadata": {
+                            "page": chunk.page_number,
+                            **chunk.metadata  # includes document_title, source, chunk_id, keywords
+                        }
                     }
                 })
 
@@ -67,7 +69,7 @@ class PDFTextIngestor:
         config.read('config.ini') 
         chunk_size = int(config['TEXT_SPLITTING']['chunk_size']) 
         overlap = int(config['TEXT_SPLITTING']['overlap']) 
-        kw_model = KeyBERT()
+        #kw_model = KeyBERT()
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
                 text = page.extract_text()
@@ -78,13 +80,13 @@ class PDFTextIngestor:
                     chunk_id = f"{doc_title}_pg{page_num}_ch{chunk_counter}"
                     chunks.append(TextChunk(
                         id=chunk_id,
-                        content=chunk_text.strip(),
+                        page_content=chunk_text.strip(),
                         page_number=page_num,
                         metadata={
                             "document_title": doc_title,
                             "source": chunk_id,
-                            "chunk_id": chunk_id,
-                            "keywords": kw_model.extract_keywords(chunk_text.strip(), keyphrase_ngram_range=(1, 3), stop_words='english', top_n=10)
+                            "chunk_id": chunk_id
+                            #"keywords": kw_model.extract_keywords(chunk_text.strip(), keyphrase_ngram_range=(1, 3), stop_words='english', top_n=10)
                         }
                     ))
                     chunk_counter += 1

@@ -2,6 +2,7 @@ from flask import Flask, request, Response, jsonify, send_from_directory
 import uuid
 from collections import defaultdict
 from provider_manager import ProviderManager
+#from keybert import KeyBERT
 
 app = Flask(__name__)
 session_histories = defaultdict(list)
@@ -105,9 +106,13 @@ def vectordb_search():
         k = data.get('k', 5)  
         if not query:
             return jsonify({'error': 'No query provided'}), 400
+        #kw_model = KeyBERT()
+        #query_keywords = kw_model.extract_keywords(query.strip(), keyphrase_ngram_range=(1, 3), stop_words='english', top_n=10)
+        #keyword_strings = [kw for kw, score in query_keywords]
+        #filters = manager.vectordb_provider.FormatFilter(keyword_strings)
         results = manager.vectordb_provider.search(query, k)
         formatted_results = []
-        for doc, score in results:
+        for doc, score in results: 
             formatted_results.append({
                 'content': doc.page_content,
                 'metadata': doc.metadata,

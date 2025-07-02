@@ -5,6 +5,7 @@ from base_vectordb_provider import BaseVectorDBProvider
 import configparser
 import logging
 import uuid
+from qdrant_client.http import models
 
 class QdrantVectorDBProvider(BaseVectorDBProvider):
     def __init__(self, embedding_model):
@@ -57,13 +58,16 @@ class QdrantVectorDBProvider(BaseVectorDBProvider):
         
             points = [
                 PointStruct(
-                    # Convert string ID to UUID
                     id=str(uuid.uuid5(uuid.NAMESPACE_DNS, vector["id"])),
                     vector=vector["values"],
-                    payload=vector["metadata"]
+                    payload={
+                        "page_content": vector["payload"]["page_content"],  # or "content"
+                        "metadata": {k: v for k, v in vector["payload"]["metadata"].items()}
+                    }
                 )
-                for vector in vectors
+            for vector in vectors
             ]
+
             self.client.upsert(
                 collection_name=collection_name,
                 points=points,
@@ -82,5 +86,10 @@ class QdrantVectorDBProvider(BaseVectorDBProvider):
                 distance=Distance.COSINE
             )
         )
+    
+    def FormatFilter(self, keyword_strings):
+        filters = models.Filter(must=[models.FieldCondition(key="keywords",match=models.MatchAny(any=keyword_strings))])
+        return filters
+
 
 Provider = QdrantVectorDBProvider

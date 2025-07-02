@@ -27,10 +27,14 @@ class BaseVectorDBProvider:
         return self.vector_store.add_documents(documents=documents)
 
     def search(self, query, k, filters=None):
-        return self.vector_store.similarity_search_with_score(query, k=k, filters=filters)
+        return self.vector_store.similarity_search_with_score(query, k=k, filter=filters)
 
     def delete(self, ids: List[str]) -> None:
         self.vector_store.delete(ids)
 
     def upsert_vectors(self, collection_name, vectors):
         raise NotImplementedError("upsert_vectors must be implemented in subclass.")
+    
+    def FormatFilter(self, keyword_strings):
+        raise NotImplementedError("upsert_vectors must be implemented in subclass.")
+
