@@ -2,6 +2,7 @@ from flask import Flask, request, Response, jsonify, send_from_directory
 import uuid
 from collections import defaultdict
 from provider_manager import ProviderManager
+import json
 #from keybert import KeyBERT
 
 app = Flask(__name__)
@@ -130,6 +131,148 @@ def health_check():
         'embedding_provider': manager.embedding_provider_name,
         'vectordb_provider': manager.vectordb_provider_name 
     })
+
+@app.route('/rerank', methods=['POST'])
+def bge_rerank_endpoint():
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        documents = data.get('documents')
+        top_n = data.get('top_n', 3)
+
+        if not query or not documents:
+            return jsonify({'error': 'Query and documents are required'}), 400
+
+        manager.reranker.top_n = top_n 
+        reranked_docs = manager.reranker.rerank(query, documents)
+        return jsonify({'reranked_documents': reranked_docs})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/rag_chat', methods=['POST'])
+def rag_chat_endpoint():
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        stream = data.get('stream', True)
+        session_id = data.get('session_id') or str(uuid.uuid4())
+
+        if session_id not in session_histories:
+            session_histories[session_id] = []
+
+        if not messages:
+            return jsonify({'error': 'No messages provided'}), 400
+
+        history = session_histories[session_id][-6:]
+        new_user_message = messages[-1]
+
+        query = new_user_message.get("content", "")
+        if not query:
+            return jsonify({'error': 'No query provided in the last message'}), 400
+
+        vectordb = manager.vectordb_provider
+        reranker = manager.reranker
+        llm = manager.llm_provider
+        retrieval_k = 50
+
+        results = vectordb.search(query, k=retrieval_k)
+        if results and isinstance(results[0], tuple):
+            docs = [doc for doc, score in results]
+        else:
+            docs = results
+
+        if not docs:
+            supporting_docs = []
+            context = "No relevant documents found."
+        else:
+            top_docs = reranker.rerank(query, docs, 20)
+            supporting_docs = top_docs if top_docs else []
+            context = "\n\n".join([doc.page_content for doc in supporting_docs]) if supporting_docs else "No relevant documents after reranking."
+
+        """
+        system_message = {
+            "role": "system",
+            "content": (
+                "You are a knowledgeable and helpful assistant specializing in the Virginia Retirement System (VRS). "
+                "You must answer strictly and exclusively using ONLY the information provided in the CONTEXT section below. "
+                "Do NOT use any outside knowledge, make assumptions, or add information not present in the context. "
+                f"CONTEXT:\n{context}\n\n"
+                "INSTRUCTIONS:\n"
+                "- ONLY use information from the above CONTEXT to answer the user's question.\n"
+                "- Do NOT use any external knowledge or make up information.\n"
+            )
+        }"""
+
+        system_message = {
+            "role": "system",
+            "content": (
+                "You are a knowledgeable and helpful assistant specializing in legal information and guidance. "
+                "You must answer strictly and exclusively using ONLY the information provided in the CONTEXT section below. "
+                "Do NOT use any outside knowledge, make assumptions, or add information not present in the context. "
+                "You must not provide legal advice, but only summarize or clarify the information as presented in the context. "
+                "Always maintain accuracy, neutrality, and compliance with the information provided. "
+                f"CONTEXT:\n{context}\n\n"
+                "INSTRUCTIONS:\n"
+                "- ONLY use information from the above CONTEXT to answer the user's question.\n"
+                "- Do NOT use any external knowledge or make up information.\n"
+                "- Do NOT provide legal advice or opinions; only restate or clarify what is in the context.\n"
+            )
+        }
+
+        chat_messages = [system_message] + history + [new_user_message]
+        for message in chat_messages:
+            print(f"Role: {message['role']}")
+            print(f"Content: {message['content']}")
+            print()
+
+
+        if stream:
+            def generate():
+                full_response = ""
+                for token in llm.stream_chat_response(chat_messages):
+                    full_response += token
+                    yield token
+                session_histories[session_id].extend([
+                    new_user_message,
+                    {"role": "assistant", "content": full_response}
+                ])
+                session_histories[session_id] = session_histories[session_id][-6:]
+                yield "\n---CITATIONS---\n"
+                yield json.dumps({
+                    "citations": format_citations(supporting_docs)
+                })
+            return Response(
+                generate(),
+                mimetype='text/plain',
+                headers={'X-Session-Id': session_id}
+            )
+        else:
+            answer = "".join(llm.get_complete_response(chat_messages))
+            session_histories[session_id].extend([
+                new_user_message,
+                {"role": "assistant", "content": answer}
+            ])
+            session_histories[session_id] = session_histories[session_id][-6:]
+
+            return jsonify({
+                'response': answer,
+                'citations': format_citations(supporting_docs[:5]),
+                'session_id': session_id
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+def format_citations(docs):
+    return [
+        {
+            "page": doc.metadata.get("page"),
+            "source": doc.metadata.get("source")
+        }
+        for doc in docs
+    ]
+    
+
 
 @app.route('/chat-widget')
 def chat_widget():

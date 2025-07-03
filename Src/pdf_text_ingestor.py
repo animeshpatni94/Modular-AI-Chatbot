@@ -122,11 +122,10 @@ class PDFTextIngestor:
 
 #Run Data Ingestion pipeline
 if __name__ == "__main__":
-
     config = configparser.ConfigParser()
     config.read('config.ini')
     folder_path = config['DEFAULT']['folder_path']
-    collection_name = "VRS_Plans"
+    collection_name = config['DEFAULT']['ingestion_collection_name']
     manager = ProviderManager()
     embedding_provider = manager.embedding_provider.embedding_model
     vectordb_provider = manager.vectordb_provider
@@ -138,6 +137,7 @@ if __name__ == "__main__":
 
     for pdf_path in pdf_files:
         ingestor = PDFTextIngestor(embedding_provider, vectordb_provider)
+        print(f"Ingesting: {pdf_path}")
         success = ingestor.ingest_pdf(pdf_path, collection_name)
         if success:
             print(f"Successfully ingested {pdf_path} into collection {collection_name}")

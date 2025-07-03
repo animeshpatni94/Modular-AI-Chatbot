@@ -8,7 +8,7 @@ class OllamaProvider(BaseLLMProvider):
         config.read('config.ini')
         model = config.get('OLLAMA', 'model')
         base_url = config.get('OLLAMA', 'base_url')
-        chat_llm = ChatOllama(model=model, base_url=base_url)
+        chat_llm = ChatOllama(model=model, base_url=base_url, temperature=0.7, num_ctx=3000)
         super().__init__(chat_llm)
 
 Provider = OllamaProvider

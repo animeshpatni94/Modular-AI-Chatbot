@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat Widget</title>
-  <!-- Add Marked.js and DOMPurify for Markdown rendering and sanitization -->
+  <!-- Marked.js and DOMPurify for Markdown rendering and sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
   <style>
@@ -25,13 +25,82 @@
     #input-bar input { flex: 1; padding: 12px; border: none; border-radius: 0 0 0 10px; font-size: 16px; }
     #input-bar button { padding: 0 18px; border: none; background: #3b5998; color: #fff; border-radius: 0 0 10px 0; font-size: 16px; cursor: pointer; }
     #input-bar input:focus { outline: none; }
-    /* Style markdown output in .ai messages */
+    /* Markdown output in .ai messages */
     .ai h1, .ai h2, .ai h3, .ai h4 { margin: 8px 0 4px; }
     .ai ul, .ai ol { margin: 6px 0 6px 24px; }
     .ai strong { font-weight: bold; }
     .ai em { font-style: italic; }
     .ai pre { background: #222; color: #fafafa; padding: 8px; border-radius: 6px; overflow-x: auto; }
     .ai code { background: #eee; padding: 2px 4px; border-radius: 4px; }
+    /* Inline citation styling */
+    .citation {
+      cursor: pointer;
+      color: #3b5998;
+      text-decoration: underline dotted;
+      font-size: 0.9em;
+      margin-left: 2px;
+    }
+    .citation:hover {
+      color: #1d3557;
+    }
+    /* Citations table styling */
+    .citations-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 14px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(60,60,60,0.05);
+      border-radius: 7px;
+      overflow: hidden;
+      font-size: 0.97em;
+    }
+    .citations-table th, .citations-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+    .citations-table th {
+      background: #3b5998;
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      border-bottom: 2px solid #2d4373;
+      font-size: 1em;
+      text-align: left;
+    }
+    .citations-table tr:last-child td {
+      border-bottom: none;
+    }
+    .citations-table td code {
+      background: #f3f6fa;
+      color: #1a237e;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 0.97em;
+      word-break: break-all;
+      white-space: pre-line;
+      font-family: 'Menlo', 'Consolas', monospace;
+    }
+    .citations-table td:first-child {
+      color: #3b5998;
+      font-weight: bold;
+      text-align: center;
+      width: 38px;
+    }
+    .citations-table td:last-child {
+      text-align: right;
+      width: 48px;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 500px) {
+      .citations-table th, .citations-table td {
+        padding: 6px 4px;
+        font-size: 0.95em;
+      }
+      #chat-container { max-width: 100vw; }
+    }
     /* New chat button */
     #new-chat-btn {
       margin: 10px auto; padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd;
@@ -50,7 +119,7 @@
     </form>
   </div>
   <script>
-    const API_URL = "/chat";
+    const API_URL = "/rag_chat";
     const messagesDiv = document.getElementById('messages');
     const inputBar = document.getElementById('input-bar');
     const userInput = document.getElementById('user-input');
@@ -74,11 +143,30 @@
       return sessionId;
     }
 
-    function appendMsg(role, content, isMarkdown = false) {
+    // Helper to render inline citations (replace [^n] with <sup> tooltips)
+    function renderInlineCitations(markdown, citations) {
+      return markdown.replace(/\[\^(\d+)\]/g, (match, index) => {
+        const i = parseInt(index, 10) - 1;
+        if (citations && citations[i]) {
+          const c = citations[i];
+          const tooltip = `${c.source ? `Source: ${c.source}` : ''}${c.page ? `, Page: ${c.page}` : ''}`;
+          return `<sup class="citation" title="${tooltip}">[${index}]</sup>`;
+        }
+        return match; // fallback
+      });
+    }
+
+    // Append a message (with optional markdown and citations)
+    function appendMsg(role, content, isMarkdown = false, citations = []) {
       const msg = document.createElement('div');
       msg.className = `msg ${role}`;
       if (isMarkdown) {
-        msg.innerHTML = DOMPurify.sanitize(marked.parse(content));
+        if (role === 'ai' && citations.length) {
+          const withCitations = renderInlineCitations(content, citations);
+          msg.innerHTML = DOMPurify.sanitize(marked.parse(withCitations));
+        } else {
+          msg.innerHTML = DOMPurify.sanitize(marked.parse(content));
+        }
       } else {
         msg.textContent = content;
       }
@@ -122,22 +210,84 @@
           localStorage.setItem('sessionId', newSessionId);
         }
 
-        // Stream and render markdown as it comes in
+        // Streaming logic with citation support
         let aiMarkdown = '';
+        let citations = [];
+        let buffer = '';
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let foundCitations = false;
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          aiMarkdown += decoder.decode(value);
-          aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(aiMarkdown));
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          buffer += decoder.decode(value);
+
+          // Check for the citations marker
+          const markerIndex = buffer.indexOf('---CITATIONS---');
+          if (markerIndex !== -1 && !foundCitations) {
+            aiMarkdown += buffer.slice(0, markerIndex);
+            // Render partial message (without citations yet)
+            aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(aiMarkdown));
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            buffer = buffer.slice(markerIndex + '---CITATIONS---'.length);
+            foundCitations = true;
+          }
+
+          // If we've found the marker, parse the JSON citations
+          if (foundCitations && buffer.trim()) {
+            try {
+              const citationObj = JSON.parse(buffer.trim());
+              citations = citationObj.citations || [];
+              // Render the AI message with inline citations
+              aiMsg.innerHTML = DOMPurify.sanitize(
+                marked.parse(renderInlineCitations(aiMarkdown, citations))
+              );
+              renderCitationsTable(aiMsg, citations); // Show only top 10 in table
+              buffer = '';
+            } catch (e) {
+              // Wait for more data if JSON is incomplete
+            }
+          } else if (!foundCitations) {
+            aiMarkdown += buffer;
+            aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(aiMarkdown));
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            buffer = '';
+          }
         }
       } catch (error) {
         console.error('Error:', error);
         aiMsg.innerHTML = '⚠️ Connection error';
       }
     });
+
+    // Helper to render citations as a table (only top 10, no note)
+    function renderCitationsTable(aiMsg, citations) {
+      if (!citations.length) return;
+      const topCitations = citations.slice(0, 10);
+      const citeDiv = document.createElement('div');
+      const table = document.createElement('table');
+      table.className = 'citations-table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th style="width:38px;">#</th>
+            <th>Source</th>
+            <th style="width:48px; text-align:right;">Page</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topCitations.map((c, i) =>
+            `<tr>
+              <td>[${i + 1}]</td>
+              <td>${c.source ? `<code>${c.source}</code>` : 'N/A'}</td>
+              <td>${c.page || ''}</td>
+            </tr>`
+          ).join('')}
+        </tbody>
+      `;
+      citeDiv.appendChild(table);
+      aiMsg.appendChild(citeDiv);
+    }
   </script>
 </body>
 </html>

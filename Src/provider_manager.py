@@ -3,7 +3,7 @@ import importlib
 from llm_factory import LLMFactory
 from embedding_factory import EmbeddingFactory
 from vectordb_factory import VectorDBFactory
-import logging
+from bge_reranker import BgeReranker
 
 class ProviderManager:
     def __init__(self):
@@ -11,6 +11,7 @@ class ProviderManager:
         self.config.read('config.ini')
         self.llm_factory = LLMFactory()
         self.embedding_factory = EmbeddingFactory()
+        self.reranker = BgeReranker(model_path="cross-encoder/ms-marco-MiniLM-L12-v2")
         self.llm_factory.register_provider('ollama', 'ollama_layer')
         self.llm_factory.register_provider('azureai', 'azureai_layer')
         self.embedding_factory.register_provider('ollama', 'ollama_embedding_layer')
