@@ -14,6 +14,7 @@ class ProviderManager:
         self.reranker = BgeReranker(model_path="cross-encoder/ms-marco-MiniLM-L12-v2")
         self.llm_factory.register_provider('ollama', 'ollama_layer')
         self.llm_factory.register_provider('azureai', 'azureai_layer')
+        self.llm_factory.register_provider('googleai', 'googleai_layer')
         self.embedding_factory.register_provider('ollama', 'ollama_embedding_layer')
         self.embedding_factory.register_provider('azureai', 'azureai_embedding_layer')
         

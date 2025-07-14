@@ -3,6 +3,7 @@ import uuid
 from collections import defaultdict
 from provider_manager import ProviderManager
 import json
+import configparser
 #from keybert import KeyBERT
 
 app = Flask(__name__)
@@ -190,42 +191,19 @@ def rag_chat_endpoint():
             supporting_docs = top_docs if top_docs else []
             context = "\n\n".join([doc.page_content for doc in supporting_docs]) if supporting_docs else "No relevant documents after reranking."
 
-        """
-        system_message = {
-            "role": "system",
-            "content": (
-                "You are a knowledgeable and helpful assistant specializing in the Virginia Retirement System (VRS). "
-                "You must answer strictly and exclusively using ONLY the information provided in the CONTEXT section below. "
-                "Do NOT use any outside knowledge, make assumptions, or add information not present in the context. "
-                f"CONTEXT:\n{context}\n\n"
-                "INSTRUCTIONS:\n"
-                "- ONLY use information from the above CONTEXT to answer the user's question.\n"
-                "- Do NOT use any external knowledge or make up information.\n"
-            )
-        }"""
-
-        system_message = {
-            "role": "system",
-            "content": (
-                "You are a knowledgeable and helpful assistant specializing in legal information and guidance. "
-                "You must answer strictly and exclusively using ONLY the information provided in the CONTEXT section below. "
-                "Do NOT use any outside knowledge, make assumptions, or add information not present in the context. "
-                "You must not provide legal advice, but only summarize or clarify the information as presented in the context. "
-                "Always maintain accuracy, neutrality, and compliance with the information provided. "
-                f"CONTEXT:\n{context}\n\n"
-                "INSTRUCTIONS:\n"
-                "- ONLY use information from the above CONTEXT to answer the user's question.\n"
-                "- Do NOT use any external knowledge or make up information.\n"
-                "- Do NOT provide legal advice or opinions; only restate or clarify what is in the context.\n"
-            )
-        }
-
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        prompt_json = config['SYSTEM_PROMPTS']['legal_prompt']
+        system_message = json.loads(prompt_json)
+        system_message['content'] = system_message['content'].replace('{context}', context)
         chat_messages = [system_message] + history + [new_user_message]
+        
+        """
         for message in chat_messages:
             print(f"Role: {message['role']}")
             print(f"Content: {message['content']}")
             print()
-
+        """
 
         if stream:
             def generate():
@@ -267,7 +245,7 @@ def format_citations(docs):
     return [
         {
             "page": doc.metadata.get("page"),
-            "source": doc.metadata.get("source")
+            "source": doc.metadata.get("document_title")
         }
         for doc in docs
     ]
@@ -277,6 +255,10 @@ def format_citations(docs):
 @app.route('/chat-widget')
 def chat_widget():
     return send_from_directory('static', 'chat.html')
+
+@app.route('/full-ui-screen')
+def full_ui_screen():
+    return send_from_directory('static', 'full_ui_screen.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
