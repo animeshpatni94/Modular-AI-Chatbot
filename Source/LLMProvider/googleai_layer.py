@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 import configparser
-from base_llm_provider import BaseLLMProvider
+from LLMProvider.base_llm_provider import BaseLLMProvider
 
 
 class GoogleAIProvider(BaseLLMProvider):

@@ -1,6 +1,6 @@
 from langchain_openai import AzureChatOpenAI
 import configparser
-from base_llm_provider import BaseLLMProvider
+from LLMProvider.base_llm_provider import BaseLLMProvider
 
 class AzureProvider(BaseLLMProvider):
     def __init__(self):

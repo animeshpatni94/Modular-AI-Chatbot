@@ -1,9 +1,9 @@
 import configparser
 import importlib
-from llm_factory import LLMFactory
-from embedding_factory import EmbeddingFactory
-from vectordb_factory import VectorDBFactory
-from bge_reranker import BgeReranker
+from LLMProvider.llm_factory import LLMFactory
+from EmbeddingProvider.embedding_factory import EmbeddingFactory
+from VectorDbProvider.vectordb_factory import VectorDBFactory
+from Rerank.bge_reranker import BgeReranker
 
 class ProviderManager:
     def __init__(self):
@@ -12,11 +12,11 @@ class ProviderManager:
         self.llm_factory = LLMFactory()
         self.embedding_factory = EmbeddingFactory()
         self.reranker = BgeReranker(model_path="cross-encoder/ms-marco-MiniLM-L12-v2")
-        self.llm_factory.register_provider('ollama', 'ollama_layer')
-        self.llm_factory.register_provider('azureai', 'azureai_layer')
-        self.llm_factory.register_provider('googleai', 'googleai_layer')
-        self.embedding_factory.register_provider('ollama', 'ollama_embedding_layer')
-        self.embedding_factory.register_provider('azureai', 'azureai_embedding_layer')
+        self.llm_factory.register_provider('ollama', 'LLMProvider.ollama_layer')
+        self.llm_factory.register_provider('azureai', 'LLMProvider.azureai_layer')
+        self.llm_factory.register_provider('googleai', 'LLMProvider.googleai_layer')
+        self.embedding_factory.register_provider('ollama', 'EmbeddingProvider.ollama_embedding_layer')
+        self.embedding_factory.register_provider('azureai', 'EmbeddingProvider.azureai_embedding_layer')
         
         self.llm_provider = self._create_provider(
             factory=self.llm_factory,
@@ -28,8 +28,8 @@ class ProviderManager:
         )
 
         self.vectordb_factory = VectorDBFactory(self.embedding_provider)
-        self.vectordb_factory.register_provider('qdrant', 'qdrant_vectordb_layer')
-        self.vectordb_factory.register_provider('azuresearch', 'azuresearch_vectordb_layer')
+        self.vectordb_factory.register_provider('qdrant', 'VectorDbProvider.qdrant_vectordb_layer')
+        self.vectordb_factory.register_provider('azuresearch', 'VectorDbProvider.azuresearch_vectordb_layer')
         
         self.vectordb_provider = self._create_provider(
             config_key='vectordb_provider',

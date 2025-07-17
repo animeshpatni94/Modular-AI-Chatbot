@@ -1,6 +1,6 @@
 from langchain_ollama import ChatOllama
 import configparser
-from base_llm_provider import BaseLLMProvider
+from LLMProvider.base_llm_provider import BaseLLMProvider
 
 class OllamaProvider(BaseLLMProvider):
     def __init__(self):

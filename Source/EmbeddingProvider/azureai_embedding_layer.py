@@ -1,6 +1,6 @@
 import configparser
 from langchain_openai import AzureOpenAIEmbeddings
-from base_embedding_provider import BaseEmbeddingProvider
+from EmbeddingProvider.base_embedding_provider import BaseEmbeddingProvider
 
 class AzureAIEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self):

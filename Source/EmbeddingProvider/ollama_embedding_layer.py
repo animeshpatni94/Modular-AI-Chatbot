@@ -1,6 +1,6 @@
 import configparser
 from langchain_ollama.embeddings import OllamaEmbeddings
-from base_embedding_provider import BaseEmbeddingProvider
+from EmbeddingProvider.base_embedding_provider import BaseEmbeddingProvider
 
 class OllamaEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self):

@@ -1,7 +1,7 @@
 from flask import Flask, request, Response, jsonify, send_from_directory
 import uuid
 from collections import defaultdict
-from provider_manager import ProviderManager
+from Helper.provider_manager import ProviderManager
 import json
 import configparser
 #from keybert import KeyBERT
@@ -193,7 +193,7 @@ def rag_chat_endpoint():
 
         config = configparser.ConfigParser()
         config.read('config.ini')
-        prompt_json = config['SYSTEM_PROMPTS']['legal_prompt']
+        prompt_json = config['SYSTEM_PROMPTS']['vrs_prompt']
         system_message = json.loads(prompt_json)
         system_message['content'] = system_message['content'].replace('{context}', context)
         chat_messages = [system_message] + history + [new_user_message]
@@ -254,11 +254,11 @@ def format_citations(docs):
 
 @app.route('/chat-widget')
 def chat_widget():
-    return send_from_directory('static', 'chat.html')
+    return send_from_directory('Static', 'chat.html')
 
 @app.route('/full-ui-screen')
 def full_ui_screen():
-    return send_from_directory('static', 'full_ui_screen.html')
+    return send_from_directory('Static', 'full_ui_screen.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

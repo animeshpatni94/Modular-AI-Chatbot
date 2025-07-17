@@ -1,5 +1,5 @@
 from langchain_community.vectorstores import AzureSearch
-from base_vectordb_provider import BaseVectorDBProvider
+from VectorDbProvider.base_vectordb_provider import BaseVectorDBProvider
 import configparser
 import logging
 

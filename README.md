@@ -102,15 +102,9 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-4. Configure the application
+4. Run development server
 ```bash
-cp config.ini.example config.ini
-# Edit config.ini with your credentials
-```
-
-5. Run development server
-```bash
-python Src/api.py
+python python -m Web.api
 ```
 
 ## Performance Considerations

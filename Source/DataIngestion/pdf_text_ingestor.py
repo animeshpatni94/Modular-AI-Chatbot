@@ -3,7 +3,7 @@ import re
 from typing import List, Dict
 from dataclasses import dataclass
 import pdfplumber
-from provider_manager import ProviderManager
+from Helper.provider_manager import ProviderManager
 #from keybert import KeyBERT
 import configparser
 

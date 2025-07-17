@@ -1,7 +1,7 @@
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance 
-from base_vectordb_provider import BaseVectorDBProvider
+from VectorDbProvider.base_vectordb_provider import BaseVectorDBProvider
 import configparser
 import logging
 import uuid
