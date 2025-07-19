@@ -5,7 +5,7 @@
             "name": "Debug Python",
             "type": "debugpy",
             "request": "launch",
-            "module": "Web.api",
+            "module": "Web.app",
             "cwd": "${workspaceFolder}/Source",
             "console": "integratedTerminal"
         }
