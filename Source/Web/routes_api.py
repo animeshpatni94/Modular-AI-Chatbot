@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, session
 import uuid
 from collections import defaultdict
 import json
 from .apikey_manager import ApiKeyManager
 from Helper.provider_manager import ProviderManager
 from Database.db_config_loader import load_config_from_db
+from Database.db_logger import log_llm_chat
 
 def format_citations(docs):
     return [
@@ -192,6 +193,7 @@ def create_api_routes():
             system_message = json.loads(prompt_json)
             system_message['content'] = system_message['content'].replace('{context}', context)
             chat_messages = [system_message] + history + [new_user_message]
+            user_id = session['user'].get('preferred_username')
 
             if stream:
                 def generate():
@@ -203,8 +205,24 @@ def create_api_routes():
                         new_user_message,
                         {"role": "assistant", "content": full_response}
                     ])
-                    history_length = int(config['SESSION']['history_length'])
-                    session_histories[session_id] = session_histories[session_id][history_length:]
+                    session_histories[session_id] = session_histories[session_id][-history_length:]
+                    log_llm_chat(
+                        session_id=session_id,
+                        user_id=user_id,
+                        user_request=query,
+                        llm_response=full_response,
+                        retrieval_docs=[
+                            {
+                                "page_content": doc.page_content,
+                                "metadata": doc.metadata
+                            }
+                            for doc in supporting_docs
+                        ],
+                        model_name= getattr(llm, 'model_name', None),
+                        provider=getattr(llm, 'provider_name', None),
+                        prompt_template=default_prompt
+                    )
+
                     yield "\n---CITATIONS---\n"
                     yield json.dumps({
                         "citations": format_citations(supporting_docs)
@@ -220,8 +238,24 @@ def create_api_routes():
                     new_user_message,
                     {"role": "assistant", "content": answer}
                 ])
-                history_length = int(config['SESSION']['history_length'])
-                session_histories[session_id] = session_histories[session_id][history_length:]
+                session_histories[session_id] = session_histories[session_id][-history_length:]
+
+                log_llm_chat(
+                    session_id=session_id,
+                    user_id=user_id,
+                    user_request=query,
+                    llm_response=answer,
+                    retrieval_docs=[
+                        {
+                            "page_content": doc.page_content,
+                            "metadata": doc.metadata
+                        }
+                        for doc in supporting_docs
+                    ],
+                    model_name=getattr(llm, 'model_name', None),
+                    provider=getattr(llm, 'provider_name', None),
+                    prompt_template=default_prompt
+                )
                 return jsonify({
                     'response': answer,
                     'citations': format_citations(supporting_docs[:5]),
