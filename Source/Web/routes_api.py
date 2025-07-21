@@ -168,7 +168,7 @@ def create_api_routes():
             if not messages:
                 return jsonify({'error': 'No messages provided'}), 400
             history_length = int(config['SESSION']['history_length'])
-            history = session_histories[session_id][history_length:]
+            history = session_histories[session_id][-history_length:]
             new_user_message = messages[-1]
             query = new_user_message.get("content", "")
             vectordb = manager.vectordb_provider
