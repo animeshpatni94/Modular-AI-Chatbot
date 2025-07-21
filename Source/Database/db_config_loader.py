@@ -1,6 +1,8 @@
 from collections import defaultdict
 from .db_connection import get_db_connection
+from functools import lru_cache
 
+@lru_cache(maxsize=1)
 def load_config_from_db():
     conn = get_db_connection()
     cursor = conn.cursor()
