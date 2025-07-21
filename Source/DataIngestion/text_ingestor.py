@@ -2,7 +2,7 @@ import os
 import re
 from typing import List, Dict
 from dataclasses import dataclass
-import configparser
+from Database.db_config_loader import load_config_from_db
 from Helper.provider_manager import ProviderManager
 
 
@@ -65,8 +65,7 @@ class TextFileIngestor:
     def _extract_text_chunks(self, file_path, doc_title):
         chunks = []
         chunk_counter = 0
-        config = configparser.ConfigParser()
-        config.read('config.ini')
+        config = load_config_from_db()
         chunk_size = int(config['TEXT_SPLITTING']['chunk_size'])
         overlap = int(config['TEXT_SPLITTING']['overlap'])
         
@@ -237,8 +236,7 @@ class TextFileIngestor:
 
 # Run Data Ingestion pipeline for text files
 if __name__ == "__main__":
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+    config = load_config_from_db()
     folder_path = config['DEFAULT']['folder_path']
     collection_name = config['DEFAULT']['ingestion_collection_name']
     manager = ProviderManager()

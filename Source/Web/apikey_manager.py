@@ -1,11 +1,10 @@
-import configparser
 from flask import request, jsonify, session
 from functools import wraps
+from Database.db_config_loader import load_config_from_db
 
 class ApiKeyManager:
-    def __init__(self, config_path='config.ini'):
-        config = configparser.ConfigParser()
-        config.read(config_path)
+    def __init__(self):
+        config = load_config_from_db()
         keys = config['OIDC'].get('valid_api_keys', '')
         self.valid_keys = [k.strip() for k in keys.split(',') if k.strip()]
 

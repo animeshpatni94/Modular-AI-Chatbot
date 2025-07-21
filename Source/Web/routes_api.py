@@ -1,10 +1,10 @@
 from flask import Blueprint, jsonify, request, Response
 import uuid
 from collections import defaultdict
-import configparser
 import json
 from .apikey_manager import ApiKeyManager
 from Helper.provider_manager import ProviderManager
+from Database.db_config_loader import load_config_from_db
 
 def format_citations(docs):
     return [
@@ -19,8 +19,7 @@ def create_api_routes():
     api = Blueprint('api', __name__)
     manager = ProviderManager()
     session_histories = defaultdict(list)
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+    config = load_config_from_db()
     api_key_manager = ApiKeyManager()
 
     @api.route('/chat', methods=['POST'])
@@ -33,8 +32,8 @@ def create_api_routes():
             session_id = data.get('session_id') or str(uuid.uuid4())
             if not messages:
                 return jsonify({'error': 'No messages provided'}), 400
-
-            history = session_histories[session_id][-6:]
+            history_length = int(config['SESSION']['history_length'])
+            history = session_histories[session_id][history_length:]
             new_user_message = messages[-1]
             messages_for_llm = history + [new_user_message]
 
@@ -48,7 +47,8 @@ def create_api_routes():
                         new_user_message,
                         {"role": "assistant", "content": full_response}
                     ])
-                    session_histories[session_id] = session_histories[session_id][-6:]
+                    history_length = int(config['SESSION']['history_length'])
+                    session_histories[session_id] = session_histories[session_id][history_length:]
                 return Response(
                     generate(),
                     mimetype='text/plain',
@@ -60,7 +60,8 @@ def create_api_routes():
                     new_user_message,
                     {"role": "assistant", "content": response}
                 ])
-                session_histories[session_id] = session_histories[session_id][-6:]
+                history_length = int(config['SESSION']['history_length'])
+                session_histories[session_id] = session_histories[session_id][history_length:]
                 return jsonify({
                     'response': response,
                     'session_id': session_id
@@ -166,8 +167,8 @@ def create_api_routes():
                 session_histories[session_id] = []
             if not messages:
                 return jsonify({'error': 'No messages provided'}), 400
-
-            history = session_histories[session_id][-6:]
+            history_length = int(config['SESSION']['history_length'])
+            history = session_histories[session_id][history_length:]
             new_user_message = messages[-1]
             query = new_user_message.get("content", "")
             vectordb = manager.vectordb_provider
@@ -186,7 +187,8 @@ def create_api_routes():
                 supporting_docs = top_docs
                 context = "\n\n".join([doc.page_content for doc in supporting_docs])
 
-            prompt_json = config['SYSTEM_PROMPTS']['vrs_prompt']
+            default_prompt = config['DEFAULT']['default_prompt']
+            prompt_json = config['SYSTEM_PROMPTS'][default_prompt]
             system_message = json.loads(prompt_json)
             system_message['content'] = system_message['content'].replace('{context}', context)
             chat_messages = [system_message] + history + [new_user_message]
@@ -201,7 +203,8 @@ def create_api_routes():
                         new_user_message,
                         {"role": "assistant", "content": full_response}
                     ])
-                    session_histories[session_id] = session_histories[session_id][-6:]
+                    history_length = int(config['SESSION']['history_length'])
+                    session_histories[session_id] = session_histories[session_id][history_length:]
                     yield "\n---CITATIONS---\n"
                     yield json.dumps({
                         "citations": format_citations(supporting_docs)
@@ -217,7 +220,8 @@ def create_api_routes():
                     new_user_message,
                     {"role": "assistant", "content": answer}
                 ])
-                session_histories[session_id] = session_histories[session_id][-6:]
+                history_length = int(config['SESSION']['history_length'])
+                session_histories[session_id] = session_histories[session_id][history_length:]
                 return jsonify({
                     'response': answer,
                     'citations': format_citations(supporting_docs[:5]),

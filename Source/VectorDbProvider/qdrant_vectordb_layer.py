@@ -2,17 +2,16 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance 
 from VectorDbProvider.base_vectordb_provider import BaseVectorDBProvider
-import configparser
 import logging
 import uuid
 from qdrant_client.http import models
+from Database.db_config_loader import load_config_from_db
 
 class QdrantVectorDBProvider(BaseVectorDBProvider):
     def __init__(self, embedding_model):
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-        url = config.get('QDRANT', 'url')
-        collection_name = config.get('QDRANT', 'collection_name')
+        config = load_config_from_db()
+        url = config['QDRANT']['url']
+        collection_name = config['QDRANT']['collection_name']
         self.client = QdrantClient(url=url)
         
         try:

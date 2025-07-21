@@ -1,15 +1,14 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-import configparser
+from Database.db_config_loader import load_config_from_db
 from LLMProvider.base_llm_provider import BaseLLMProvider
 
 
 class GoogleAIProvider(BaseLLMProvider):
     def __init__(self):
-        config = configparser.ConfigParser()
-        config.read('config.ini')
+        config = load_config_from_db()
         chat_llm = ChatGoogleGenerativeAI(
-            model=config.get('GOOGLEAI', 'model_name'),
-            google_api_key=config.get('GOOGLEAI', 'google_api_key'),
+            model=config['GOOGLEAI']['model_name'],
+            google_api_key=config['GOOGLEAI']['google_api_key'],
             temperature=0.5,
             max_tokens=4096
         )

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pdfplumber
 from Helper.provider_manager import ProviderManager
 #from keybert import KeyBERT
-import configparser
+from Database.db_config_loader import load_config_from_db
 
 @dataclass
 class TextChunk:
@@ -65,8 +65,7 @@ class PDFTextIngestor:
     def _extract_text_chunks(self, pdf_path, doc_title):
         chunks = []
         chunk_counter = 0
-        config = configparser.ConfigParser()
-        config.read('config.ini') 
+        config = load_config_from_db()
         chunk_size = int(config['TEXT_SPLITTING']['chunk_size']) 
         overlap = int(config['TEXT_SPLITTING']['overlap']) 
         #kw_model = KeyBERT()
@@ -122,8 +121,7 @@ class PDFTextIngestor:
 
 #Run Data Ingestion pipeline
 if __name__ == "__main__":
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+    config = load_config_from_db()
     folder_path = config['DEFAULT']['folder_path']
     collection_name = config['DEFAULT']['ingestion_collection_name']
     manager = ProviderManager()

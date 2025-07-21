@@ -1,15 +1,14 @@
-import configparser
+from Database.db_config_loader import load_config_from_db
 from langchain_openai import AzureOpenAIEmbeddings
 from EmbeddingProvider.base_embedding_provider import BaseEmbeddingProvider
 
 class AzureAIEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self):
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-        azure_deployment = config.get('AZUREAI_EMBED', 'azure_deployment')
-        api_version = config.get('AZUREAI_EMBED', 'api_version')
-        azure_endpoint = config.get('AZUREAI_EMBED', 'azure_endpoint')
-        api_key = config.get('AZUREAI_EMBED', 'api_key')
+        config = load_config_from_db()
+        azure_deployment = config['AZUREAI_EMBED']['azure_deployment']
+        api_version = config['AZUREAI_EMBED']['api_version']
+        azure_endpoint = config['AZUREAI_EMBED']['azure_endpoint']
+        api_key = config['AZUREAI_EMBED']['api_key']
         
         self.embedding_model = AzureOpenAIEmbeddings(
             azure_deployment=azure_deployment,

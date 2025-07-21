@@ -1,14 +1,13 @@
-import configparser
 import importlib
 from LLMProvider.llm_factory import LLMFactory
 from EmbeddingProvider.embedding_factory import EmbeddingFactory
 from VectorDbProvider.vectordb_factory import VectorDBFactory
 from Rerank.bge_reranker import BgeReranker
+from Database.db_config_loader import load_config_from_db
 
 class ProviderManager:
     def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
+        self.config = load_config_from_db()
         self.llm_factory = LLMFactory()
         self.embedding_factory = EmbeddingFactory()
         self.reranker = BgeReranker(model_path="cross-encoder/ms-marco-MiniLM-L12-v2")
@@ -37,7 +36,7 @@ class ProviderManager:
         )
         
     def _create_provider(self, factory, config_key):
-        provider_name = self.config.get('DEFAULT', config_key).lower()
+        provider_name = self.config['DEFAULT'][config_key].lower()
         provider_module_name = factory.get_provider(provider_name)
         provider_module = importlib.import_module(provider_module_name)
         provider_class = getattr(provider_module, 'Provider')

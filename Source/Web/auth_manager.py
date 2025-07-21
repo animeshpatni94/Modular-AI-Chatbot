@@ -1,15 +1,15 @@
-import configparser
+
 import secrets
 import string
 from authlib.integrations.flask_client import OAuth
 from flask import session, redirect, request, url_for, abort
 from functools import wraps
 import requests
+from Database.db_config_loader import load_config_from_db
 
 class AuthManager:
-    def __init__(self, app, config_path='config.ini'):
-        config = configparser.ConfigParser()
-        config.read(config_path)
+    def __init__(self, app):
+        config = load_config_from_db()
         oidc = config['OIDC']
         self.client_id = oidc.get('client_id')
         self.client_secret = oidc.get('client_secret')

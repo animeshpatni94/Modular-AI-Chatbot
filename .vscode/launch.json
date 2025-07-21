@@ -8,6 +8,22 @@
             "module": "Web.app",
             "cwd": "${workspaceFolder}/Source",
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "PDF Data Ingestion",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "DataIngestion.pdf_text_ingestor",
+            "cwd": "${workspaceFolder}/Source",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Code Data Ingestion",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "DataIngestion.text_ingestor",
+            "cwd": "${workspaceFolder}/Source",
+            "console": "integratedTerminal"
+        },
     ]
 }
