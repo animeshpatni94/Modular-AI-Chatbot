@@ -88,23 +88,6 @@ def create_api_routes():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
-    @api.route('/switch', methods=['POST'])
-    @api_key_manager.require_api_key
-    def switch_provider():
-        try:
-            data = request.get_json()
-            new_provider = data.get('provider', '').lower()
-            provider_type = data.get('provider_type', 'llm')
-            if not new_provider:
-                return jsonify({'error': 'No provider specified'}), 400
-            manager.switch_provider(new_provider, provider_type)
-            return jsonify({
-                'status': 'success',
-                'message': f'Switched to {new_provider} ({provider_type})'
-            })
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
     @api.route('/vectordb/store', methods=['POST'])
     @api_key_manager.require_api_key
     def vectordb_store():
@@ -155,6 +138,7 @@ def create_api_routes():
             return jsonify({'reranked_documents': reranked})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        
 
     @api.route('/rag_chat', methods=['POST'])
     @api_key_manager.require_auth_or_api_key
@@ -175,16 +159,16 @@ def create_api_routes():
             vectordb = manager.vectordb_provider
             reranker = manager.reranker
             llm = manager.llm_provider
-            retrieval_k = 50
-
-            results = vectordb.search(query, k=retrieval_k)
+            search = int(config['DEFAULT']['search_population'])
+            top_r = int(search * 0.8)
+            results = vectordb.search(query, search=search, top_r=top_r)
             docs = [doc for doc, score in results] if results and isinstance(results[0], tuple) else results
 
             if not docs:
                 supporting_docs = []
                 context = "No relevant documents found."
             else:
-                top_docs = reranker.rerank(query, docs, 20)
+                top_docs = reranker.rerank(query, docs, int(top_r*0.4))
                 supporting_docs = top_docs
                 context = "\n\n".join([doc.page_content for doc in supporting_docs])
 
@@ -272,5 +256,7 @@ def create_api_routes():
             'embedding_provider': manager.embedding_provider_name,
             'vectordb_provider': manager.vectordb_provider_name
         })
+    
+        
 
     return api

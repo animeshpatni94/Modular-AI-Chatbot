@@ -14,7 +14,7 @@ class AzureProvider(BaseLLMProvider):
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             openai_api_key=openai_api_key,
-            max_tokens=4096,
+            max_tokens=2048,
             temperature=0.5 
         ) 
         super().__init__(chat_llm)

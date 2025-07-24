@@ -13,7 +13,8 @@ INSERT INTO ConfigEntries (section_id, config_key, config_value) VALUES
 (@section_id, 'vectordb_provider', 'qdrant'),
 (@section_id, 'folder_path', ''),
 (@section_id, 'ingestion_collection_name', 'VRS'),
-(@section_id, 'default_prompt', 'legal_prompt');
+(@section_id, 'default_prompt', 'legal_prompt'),
+(@section_id, 'search_population', '150');
 
 -- SESSION
 SELECT @section_id = id FROM ConfigSections WHERE name = 'SESSION';

@@ -24,3 +24,10 @@ CREATE TABLE LLMChatLogs (
     retrieval_docs NVARCHAR(MAX) NULL,
     timestamp DATETIME DEFAULT GETDATE()
 );
+
+CREATE TABLE VectorVocabularies (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    collection_name VARCHAR(128) NOT NULL UNIQUE,
+    vocab_json NVARCHAR(MAX) NOT NULL,
+    updated_at DATETIME DEFAULT GETDATE()
+);
