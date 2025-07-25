@@ -1,64 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Full UI Screen</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Full UI Screen with Multi-line Input</title>
   <!-- Marked.js and DOMPurify for Markdown rendering and sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
   <style>
-    html, body { height: 100%; margin: 0; }
-    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
     #full-ui-container {
-      max-width: 900px; margin: 20px auto; background: #fff;
-      border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex; flex-direction: column; height: 90vh;
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
     }
     #messages {
-      flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       border-bottom: 1px solid #ddd;
     }
-    .msg { 
-      padding: 10px 16px; border-radius: 16px; max-width: 75%; 
-      word-break: break-word; line-height: 1.4;
-      /* Ensure proper text rendering */
+    .msg {
+      padding: 10px 16px;
+      border-radius: 16px;
+      max-width: 75%;
+      word-break: break-word;
+      line-height: 1.4;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    .user { align-self: flex-end; background: #3b5998; color: #fff; }
-    .ai { 
-      align-self: flex-start; background: #eee; color: #222;
-      /* Prevent text corruption issues */
+    .user {
+      align-self: flex-end;
+      background: #3b5998;
+      color: #fff;
+    }
+    .ai {
+      align-self: flex-start;
+      background: #eee;
+      color: #222;
       white-space: pre-wrap;
       overflow-wrap: break-word;
     }
-    #input-bar { display: flex; border-top: 1px solid #ddd; }
-    #input-bar input { 
-      flex: 1; padding: 12px; border: none; border-radius: 0 0 0 10px; 
-      font-size: 16px; background: #fff; color: #333;
+    #input-bar {
+      display: flex;
+      border-top: 1px solid #ddd;
     }
-    #input-bar button { 
-      padding: 0 18px; border: none; background: #3b5998; color: #fff; 
-      border-radius: 0 0 10px 0; font-size: 16px; cursor: pointer; 
+    #input-bar textarea {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 0 0 0 10px;
+      font-size: 16px;
+      background: #fff;
+      color: #333;
+      resize: vertical;
+      min-height: 60px; /* ~3 rows */
+      font-family: Arial, sans-serif;
+      line-height: 1.4;
     }
-    #input-bar input:focus { outline: none; }
-    .ai h1, .ai h2, .ai h3, .ai h4 { margin: 8px 0 4px; color: #333; }
-    .ai ul, .ai ol { margin: 6px 0 6px 24px; }
-    .ai strong { font-weight: bold; color: #333; }
-    .ai em { font-style: italic; }
-    .ai pre { 
-      background: #2d3748; color: #e2e8f0; padding: 12px; 
-      border-radius: 6px; overflow-x: auto; font-family: 'Courier New', monospace;
+    #input-bar button {
+      padding: 0 18px;
+      border: none;
+      background: #3b5998;
+      color: #fff;
+      border-radius: 0 0 10px 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #input-bar textarea:focus {
+      outline: none;
+    }
+    .ai h1, .ai h2, .ai h3, .ai h4 {
+      margin: 8px 0 4px;
+      color: #333;
+    }
+    .ai ul, .ai ol {
+      margin: 6px 0 6px 24px;
+    }
+    .ai strong {
+      font-weight: bold;
+      color: #333;
+    }
+    .ai em {
+      font-style: italic;
+    }
+    .ai pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
       white-space: pre;
     }
-    .ai code { 
-      background: #f7fafc; color: #2d3748; padding: 2px 6px; 
-      border-radius: 4px; font-family: 'Courier New', monospace;
+    .ai code {
+      background: #f7fafc;
+      color: #2d3748;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
       border: 1px solid #e2e8f0;
     }
     .ai pre code {
-      background: transparent; color: inherit; padding: 0; border: none;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
     }
     .citation {
       cursor: pointer;
@@ -120,24 +182,31 @@
       width: 48px;
     }
     @media (max-width: 900px) {
-      #full-ui-container { max-width: 100vw; margin: 10px; }
+      #full-ui-container {
+        max-width: 100vw;
+        margin: 10px;
+      }
       .citations-table th, .citations-table td {
         padding: 6px 4px;
         font-size: 0.95em;
       }
     }
     #new-chat-btn {
-      margin: 10px auto; padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd;
-      border-radius: 4px; cursor: pointer; display: block; width: fit-content;
+      margin: 10px auto;
+      padding: 8px 16px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      display: block;
+      width: fit-content;
     }
-    #new-chat-btn:hover { background: #e0e0e0; }
-    
-    /* Loading indicator */
+    #new-chat-btn:hover {
+      background: #e0e0e0;
+    }
     .loading {
       opacity: 0.7;
     }
-    
-    /* Error message styling */
     .error {
       color: #e53e3e;
       background: #fed7d7;
@@ -153,91 +222,102 @@
     <button id="new-chat-btn">New Conversation</button>
     <div id="messages"></div>
     <form id="input-bar">
-      <input id="user-input" autocomplete="off" placeholder="Type your message..." />
+      <textarea
+        id="user-input"
+        rows="3"
+        autocomplete="off"
+        placeholder="Type your message..."
+      ></textarea>
       <button type="submit">Send</button>
     </form>
   </div>
+
   <script>
     const API_URL = "/rag_chat";
-    const messagesDiv = document.getElementById('messages');
-    const inputBar = document.getElementById('input-bar');
-    const userInput = document.getElementById('user-input');
-    const newChatBtn = document.getElementById('new-chat-btn');
+    const messagesDiv = document.getElementById("messages");
+    const inputBar = document.getElementById("input-bar");
+    const userInput = document.getElementById("user-input");
+    const newChatBtn = document.getElementById("new-chat-btn");
 
     function generateUUID() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (
+        c
+      ) {
+        let r = (Math.random() * 16) | 0,
+          v = c === "x" ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       });
     }
-    
+
     function getSessionId() {
-      let sessionId = localStorage.getItem('sessionId');
+      let sessionId = localStorage.getItem("sessionId");
       if (!sessionId) {
         sessionId = generateUUID();
-        localStorage.setItem('sessionId', sessionId);
+        localStorage.setItem("sessionId", sessionId);
       }
       return sessionId;
     }
-    
+
     function renderInlineCitations(markdown, citations) {
       if (!markdown || !citations) return markdown;
       return markdown.replace(/\[\^?(\d+)\]/g, (match, index) => {
         const i = parseInt(index, 10) - 1;
         if (citations && citations[i]) {
           const c = citations[i];
-          const tooltip = `${c.source ? `Source: ${c.source}` : ''}${c.page ? `, Page: ${c.page}` : ''}`;
+          const tooltip = `${c.source ? `Source: ${c.source}` : ""}${
+            c.page ? `, Page: ${c.page}` : ""
+          }`;
           return `<sup class="citation" title="${tooltip}">[${index}]</sup>`;
         }
         return match;
       });
     }
-    
+
     function appendMsg(role, content, isMarkdown = false, citations = []) {
-      const msg = document.createElement('div');
+      const msg = document.createElement("div");
       msg.className = `msg ${role}`;
-      
+
       if (isMarkdown && content) {
         try {
-          if (role === 'ai' && citations && citations.length) {
+          if (role === "ai" && citations && citations.length) {
             const withCitations = renderInlineCitations(content, citations);
             msg.innerHTML = DOMPurify.sanitize(marked.parse(withCitations));
           } else {
             msg.innerHTML = DOMPurify.sanitize(marked.parse(content));
           }
         } catch (error) {
-          console.error('Markdown parsing error:', error);
+          console.error("Markdown parsing error:", error);
           msg.textContent = content; // Fallback to plain text
         }
       } else {
-        msg.textContent = content || '';
+        msg.textContent = content || "";
       }
-      
+
       messagesDiv.appendChild(msg);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
       return msg;
     }
-    
+
     function startNewChat() {
-      localStorage.removeItem('sessionId');
-      messagesDiv.innerHTML = '';
+      localStorage.removeItem("sessionId");
+      messagesDiv.innerHTML = "";
     }
-    
-    newChatBtn.addEventListener('click', startNewChat);
-    
-    inputBar.addEventListener('submit', async (e) => {
+
+    newChatBtn.addEventListener("click", startNewChat);
+
+    inputBar.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = userInput.value.trim();
       if (!text) return;
-      
-      appendMsg('user', text);
-      userInput.value = '';
-      
-      const aiMsg = appendMsg('ai', '', true);
-      aiMsg.classList.add('loading');
-      
+
+      appendMsg("user", text);
+      userInput.value = "";
+
+      const aiMsg = appendMsg("ai", "", true);
+      aiMsg.classList.add("loading");
+
       const sessionId = getSessionId();
-      
+
       try {
         const response = await fetch(API_URL, {
           method: "POST",
@@ -245,46 +325,46 @@
           body: JSON.stringify({
             messages: [{ role: "user", content: text }],
             stream: true,
-            session_id: sessionId
-          })
+            session_id: sessionId,
+          }),
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        const newSessionId = response.headers.get('X-Session-Id');
+
+        const newSessionId = response.headers.get("X-Session-Id");
         if (newSessionId && newSessionId !== sessionId) {
-          localStorage.setItem('sessionId', newSessionId);
+          localStorage.setItem("sessionId", newSessionId);
         }
-        
-        let aiMarkdown = '';
+
+        let aiMarkdown = "";
         let citations = [];
-        let buffer = '';
+        let buffer = "";
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let foundCitations = false;
-        
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
-          
-          const markerIndex = buffer.indexOf('---CITATIONS---');
+
+          const markerIndex = buffer.indexOf("---CITATIONS---");
           if (markerIndex !== -1 && !foundCitations) {
             aiMarkdown += buffer.slice(0, markerIndex);
             try {
               aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(aiMarkdown));
             } catch (error) {
-              console.error('Markdown parsing error:', error);
+              console.error("Markdown parsing error:", error);
               aiMsg.textContent = aiMarkdown;
             }
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            buffer = buffer.slice(markerIndex + '---CITATIONS---'.length);
+            buffer = buffer.slice(markerIndex + "---CITATIONS---".length);
             foundCitations = true;
           }
-          
+
           if (foundCitations && buffer.trim()) {
             try {
               const citationObj = JSON.parse(buffer.trim());
@@ -292,7 +372,7 @@
               const withCitations = renderInlineCitations(aiMarkdown, citations);
               aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(withCitations));
               renderCitationsTable(aiMsg, citations);
-              buffer = '';
+              buffer = "";
             } catch (e) {
               // Continue if JSON parsing fails
             }
@@ -301,37 +381,37 @@
             try {
               aiMsg.innerHTML = DOMPurify.sanitize(marked.parse(aiMarkdown));
             } catch (error) {
-              console.error('Markdown parsing error:', error);
+              console.error("Markdown parsing error:", error);
               aiMsg.textContent = aiMarkdown;
             }
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            buffer = '';
+            buffer = "";
           }
         }
-        
-        aiMsg.classList.remove('loading');
-        
+
+        aiMsg.classList.remove("loading");
       } catch (error) {
-        console.error('Error:', error);
-        aiMsg.classList.remove('loading');
-        aiMsg.innerHTML = '<div class="error">⚠️ Connection error. Please try again.</div>';
+        console.error("Error:", error);
+        aiMsg.classList.remove("loading");
+        aiMsg.innerHTML =
+          '<div class="error">⚠️ Connection error. Please try again.</div>';
       }
     });
-    
+
     function renderCitationsTable(aiMsg, citations) {
       if (!citations || !citations.length) return;
-      
+
       // Remove existing citations table if any
-      const existingTable = aiMsg.querySelector('.citations-table');
+      const existingTable = aiMsg.querySelector(".citations-table");
       if (existingTable) {
         existingTable.parentElement.remove();
       }
-      
+
       const topCitations = citations.slice(0, 10);
-      const citeDiv = document.createElement('div');
-      const table = document.createElement('table');
-      table.className = 'citations-table';
-      
+      const citeDiv = document.createElement("div");
+      const table = document.createElement("table");
+      table.className = "citations-table";
+
       table.innerHTML = `
         <thead>
           <tr>
@@ -341,16 +421,19 @@
           </tr>
         </thead>
         <tbody>
-          ${topCitations.map((c, i) =>
-            `<tr>
+          ${topCitations
+            .map(
+              (c, i) => `
+            <tr>
               <td>[${i + 1}]</td>
-              <td>${c.source ? `<code>${DOMPurify.sanitize(c.source)}</code>` : 'N/A'}</td>
-              <td>${c.page ? DOMPurify.sanitize(c.page.toString()) : ''}</td>
+              <td>${c.source ? `<code>${DOMPurify.sanitize(c.source)}</code>` : "N/A"}</td>
+              <td>${c.page ? DOMPurify.sanitize(c.page.toString()) : ""}</td>
             </tr>`
-          ).join('')}
+            )
+            .join("")}
         </tbody>
       `;
-      
+
       citeDiv.appendChild(table);
       aiMsg.appendChild(citeDiv);
     }
