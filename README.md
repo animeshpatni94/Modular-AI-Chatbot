@@ -2,9 +2,6 @@
 
 A flexible and modular chatbot implementation that supports multiple AI providers (Azure OpenAI, Google AI, Ollama) with RAG (Retrieval Augmented Generation) capabilities and vector database integration.
 
-Last Updated: 2025-07-14 13:51:11  
-Current User: animeshpatni94
-
 ## Purpose
 
 This project provides a modular chatbot solution with the following key features:
