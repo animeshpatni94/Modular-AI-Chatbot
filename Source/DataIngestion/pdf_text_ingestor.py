@@ -9,6 +9,11 @@ from Database.db_config_loader import load_config_from_db
 from Helper.keyword_vocab import KeywordVocabulary
 from Database.db_vocab import VocabDBManager
 import datetime
+import fitz
+from PIL import Image
+import pytesseract
+import time
+from typing import List
 
 @dataclass
 class TextChunk:
@@ -17,9 +22,8 @@ class TextChunk:
     page_number: int
     metadata: Dict[str, str]
 
-
 class PDFTextIngestor:
-    def __init__(self, embedding_provider, vectordb_provider,kw_model, vocabulary: KeywordVocabulary):
+    def __init__(self, embedding_provider, vectordb_provider, kw_model, vocabulary: KeywordVocabulary):
         self.embedding_provider = embedding_provider
         self.vectordb_provider = vectordb_provider
         self.vocab = vocabulary
@@ -32,6 +36,23 @@ class PDFTextIngestor:
             nltk.download("stopwords")
             self.stop_words = stopwords.words("english")
 
+    @staticmethod
+    def ocr_pdf_page(pdf_path: str, page_number: int) -> str:
+        """
+        OCR a specific page of a PDF using PyMuPDF for rendering, returns extracted text.
+        page_number is 1-based.
+        """
+        try:
+            pdf = fitz.open(pdf_path)
+            page = pdf.load_page(page_number - 1)  # fitz: 0-based
+            pix = page.get_pixmap(dpi=300)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            text = pytesseract.image_to_string(img, lang='eng')
+            return text
+        except Exception as e:
+            print(f"❌ OCR failed for {pdf_path}, page {page_number}: {e}")
+            return ""
+
     def ingest_pdf(self, pdf_path: str, collection_name: str) -> bool:
         try:
             if not os.path.exists(pdf_path):
@@ -39,6 +60,10 @@ class PDFTextIngestor:
 
             doc_title = self._extract_document_title(pdf_path)
             chunks = self._extract_text_chunks(pdf_path, doc_title)
+            if not chunks:
+                print(f"⚠️ No text chunks extracted from {pdf_path}")
+                return False
+
             dense_embeddings = self._generate_embeddings([chunk.page_content for chunk in chunks])
 
             vectors = []
@@ -52,9 +77,8 @@ class PDFTextIngestor:
                 keyword_terms = [kw[0] for kw in keywords]
                 sparse_text = " ".join(keyword_terms)
 
-                # ✅ Convert keywords into sparse vectors using the global vocabulary
                 sparse_indices = [self.vocab.get_index(term) for term in keyword_terms]
-                sparse_values = [1.0] * len(sparse_indices)  # or use kw[1] for scores if needed
+                sparse_values = [1.0] * len(sparse_indices)
 
                 vectors.append({
                     "id": chunk.id,
@@ -100,10 +124,43 @@ class PDFTextIngestor:
 
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
-                text = page.extract_text()
-                if not text or not text.strip():
-                    continue
-                page_chunks = self._split_text(text, chunk_size, overlap)
+                text_blocks = []
+                native_text = page.extract_text() or ""
+                if native_text.strip():
+                    text_blocks.append(native_text)
+
+                # 2. OCR all images ALWAYS—important for figures/stamps even if native text exists
+                for img in (page.images or []):
+                    try:
+                        x0 = max(0, img["x0"])
+                        y0 = max(0, img["top"])
+                        x1 = min(page.width, img["x1"])
+                        y1 = min(page.height, img["bottom"])
+                        if x1 > x0 and y1 > y0:
+                            cropped = page.crop((x0, y0, x1, y1))
+                            page_img = cropped.to_image(resolution=300)
+                            pil_img = page_img.original
+                            ocr_img_text = pytesseract.image_to_string(pil_img, lang='eng')
+                            if ocr_img_text.strip():
+                                text_blocks.append(ocr_img_text)
+                    except Exception as err:
+                        print(f"⚠️ Failed to OCR image on page {page_num}: {err}")
+
+                # 3. If NO native text, fallback to OCR the whole page image (scanned PDF)
+                if not native_text.strip():
+                    try:
+                        ocr_text = PDFTextIngestor.ocr_pdf_page(pdf_path, page_num)
+                        if ocr_text.strip():
+                            text_blocks.append(ocr_text)
+                    except Exception as err:
+                        print(f"⚠️ OCR error on page {page_num}: {err}")
+
+
+                full_text = "\n".join([t for t in text_blocks if t.strip()])
+                if not full_text.strip():
+                    continue  # skip empty pages
+
+                page_chunks = self._split_text(full_text, chunk_size, overlap)
                 for chunk_text in page_chunks:
                     chunk_id = f"{doc_title}_pg{page_num}_ch{chunk_counter}"
                     chunks.append(TextChunk(
@@ -137,15 +194,23 @@ class PDFTextIngestor:
         return chunks
 
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        try:
-            return self.embedding_provider.embed_documents(texts)
-        except Exception as e:
-            print(f"❌ Embedding generation failed: {str(e)}")
-            raise
-
+        max_retries = 5
+        retry_delay = 60  # Start with 60 second delay
+        for attempt in range(max_retries):
+            try:
+                return self.embedding_provider.embed_documents(texts)
+            except Exception as e:
+                # Check for rate limit errors using message or exception type
+                if "rate limit" in str(e).lower() or "429" in str(e):
+                    print(f"❌ Rate limit encountered, retrying {attempt + 1}/{max_retries} after {retry_delay}s")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"❌ Embedding generation failed: {str(e)}")
+                    raise
+        raise Exception("Max retries exceeded for embedding generation due to rate limit")
 
 if __name__ == "__main__":
-    start_time = datetime.datetime.now() 
+    start_time = datetime.datetime.now()
     config = load_config_from_db()
     folder_path = config['DEFAULT']['folder_path']
     collection_name = config['DEFAULT']['ingestion_collection_name']
@@ -155,43 +220,77 @@ if __name__ == "__main__":
     vectordb_provider = manager.vectordb_provider
     kw_model = manager.kw_model
 
-    # ✅ Step 1: Build global vocabulary first!
     from tqdm import tqdm
     vocab = KeywordVocabulary()
     print("🔍 Building global keyword vocabulary...")
 
     pdf_files = []
-
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             if file.lower().endswith('.pdf'):
                 pdf_files.append(os.path.join(root, file))
 
     vocab_dict = VocabDBManager.load_vocab_from_db(collection_name)
-    if (vocab_dict is not None):
+    if vocab_dict is not None:
         vocab.load_from_dict(vocab_dict)
 
-    if vocab.vocab is None:
+    # --- VOCAB BUILDER: Extract native text, fallback OCR, and OCR on all images --- #
+    if vocab.vocab is None or len(vocab.vocab) == 0:
         for pdf_path in tqdm(pdf_files, desc="Processing PDFs"):
             with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if not text:
+                for page_num, page in enumerate(pdf.pages, start=1):
+                    text_blocks = []
+                    # Extract native text, fallback to OCR if none
+                    native_text = page.extract_text() or ""
+                    if native_text.strip():
+                        text_blocks.append(native_text)
+
+                    # 2. OCR all images ALWAYS—important for figures/stamps even if native text exists
+                    for img in (page.images or []):
+                        try:
+                            x0 = max(0, img["x0"])
+                            y0 = max(0, img["top"])
+                            x1 = min(page.width, img["x1"])
+                            y1 = min(page.height, img["bottom"])
+                            if x1 > x0 and y1 > y0:
+                                cropped = page.crop((x0, y0, x1, y1))
+                                page_img = cropped.to_image(resolution=300)
+                                pil_img = page_img.original
+                                ocr_img_text = pytesseract.image_to_string(pil_img, lang='eng')
+                                if ocr_img_text.strip():
+                                    text_blocks.append(ocr_img_text)
+                        except Exception as err:
+                            print(f"⚠️ Failed to OCR image on page {page_num}: {err}")
+
+                        # 3. If NO native text, fallback to OCR the whole page image (scanned PDF)
+                    if not native_text.strip():
+                        try:
+                            ocr_text = PDFTextIngestor.ocr_pdf_page(pdf_path, page_num)
+                            if ocr_text.strip():
+                                text_blocks.append(ocr_text)
+                        except Exception as err:
+                            print(f"⚠️ OCR error on page {page_num}: {err}")
+
+                    full_text = "\n".join([t for t in text_blocks if t.strip()])
+                    if not full_text.strip():
                         continue
                     try:
                         keywords = kw_model.extract_keywords(
-                            text, keyphrase_ngram_range=(1, 3), stop_words=stopwords.words("english"), top_n=10)
+                            full_text,
+                            keyphrase_ngram_range=(1, 3),
+                            stop_words=stopwords.words("english"),
+                            top_n=10
+                        )
                         terms = [kw[0] for kw in keywords]
                         vocab.build_from_keywords([terms])
                     except Exception as err:
-                        print(f"⚠️ Skipping keywords for page: {err}")
+                        print(f"⚠️ Skipping keywords for page {page_num}: {err}")
 
         VocabDBManager.save_vocab_to_db(collection_name, vocab.vocab)
 
     print(f"📚 Vocabulary size: {len(vocab.vocab)} terms")
 
-    # ✅ Step 2: Ingest documents with dense + sparse index
-    ingestor = PDFTextIngestor(embedding_provider, vectordb_provider, kw_model,vocabulary=vocab)
+    ingestor = PDFTextIngestor(embedding_provider, vectordb_provider, kw_model, vocabulary=vocab)
 
     for pdf_path in pdf_files:
         print(f"\n📄 Ingesting: {pdf_path}")
@@ -200,7 +299,7 @@ if __name__ == "__main__":
             print(f"✅ Successfully ingested: {pdf_path}")
         else:
             print(f"❌ Failed to ingest: {pdf_path}")
-    
-    end_time = datetime.datetime.now()  # End timer
+
+    end_time = datetime.datetime.now()
     elapsed = end_time - start_time
     print(f"\n⏱️ Pipeline completed in {elapsed} (hh:mm:ss.microseconds)")

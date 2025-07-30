@@ -18,6 +18,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "PDF Spliter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "DataIngestion.pdf_splitter",
+            "cwd": "${workspaceFolder}/Source",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Code Data Ingestion",
             "type": "debugpy",
             "request": "launch",
