@@ -6,6 +6,9 @@ from flask import session, redirect, request, url_for, abort
 from functools import wraps
 import requests
 from Database.db_config_loader import load_config_from_db
+import time
+
+SESSION_TIMEOUT_SECONDS = 3600  # 1 hour
 
 class AuthManager:
     def __init__(self, app):
@@ -54,6 +57,7 @@ class AuthManager:
         id_token = self.oauth.oidc.parse_id_token(token, nonce=nonce)
         session['user'] = id_token
         session['access_token'] = token.get('access_token')
+        session['login_time'] = time.time()
         next_url = session.pop('next', url_for('ui.chat_widget'))
         return redirect(next_url)
 
@@ -66,14 +70,22 @@ class AuthManager:
     def oidc_login_required(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            #if (self.clear_session):
-            #    session.clear()
-            if self.clear_session or 'user' not in session:
+            # Check for session timeout
+            login_time = session.get('login_time')
+            if not login_time or (time.time() - login_time) > SESSION_TIMEOUT_SECONDS:
+                # Clear session and force re-login
+                session.clear()
+                return redirect(url_for('login', next=request.url))
+            
+            # Check if user session exists
+            if 'user' not in session:
                 return redirect(url_for('login', next=request.url))
 
+            # (Optional) Token introspection to ensure access token validity
             if self.introspection_endpoint and 'access_token' in session:
                 access_token = session.get('access_token')
                 if not self._introspect_token(access_token):
+                    session.clear()
                     return abort(401, 'Access token is invalid or expired.')
 
             return func(*args, **kwargs)

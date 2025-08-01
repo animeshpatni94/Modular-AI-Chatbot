@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Full UI Screen with Multi-line Input</title>
+  <title>ConvoAI</title>
+  <link rel="icon" type="image/png" href="/static/favicon.ico" />
   <!-- Marked.js and DOMPurify for Markdown rendering and sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
@@ -301,6 +302,7 @@
     function startNewChat() {
       localStorage.removeItem("sessionId");
       messagesDiv.innerHTML = "";
+      loadDefaultMessage();
     }
 
     newChatBtn.addEventListener("click", startNewChat);
@@ -437,6 +439,20 @@
       citeDiv.appendChild(table);
       aiMsg.appendChild(citeDiv);
     }
+
+    // Load default message on page load
+    async function loadDefaultMessage() {
+      try {
+        const response = await fetch('/default_message');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        appendMsg(data.role || 'ai', data.content || 'Welcome to the chat!');
+      } catch (error) {
+        console.error('Failed to load default message:', error);
+        appendMsg('ai', 'Welcome to the chat!');
+      }
+    }
+    loadDefaultMessage();
   </script>
 </body>
 </html>

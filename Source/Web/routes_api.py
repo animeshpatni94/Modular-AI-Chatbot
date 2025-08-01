@@ -160,7 +160,7 @@ def create_api_routes():
             reranker = manager.reranker
             llm = manager.llm_provider
             search = int(config['DEFAULT']['search_population'])
-            top_r = int(search * 0.8)
+            top_r = search
             results = vectordb.search(query, search=search, top_r=top_r)
             docs = [doc for doc, score in results] if results and isinstance(results[0], tuple) else results
 
