@@ -6,6 +6,7 @@ from .apikey_manager import ApiKeyManager
 from Helper.provider_manager import ProviderManager
 from Database.db_config_loader import load_config_from_db
 from Database.db_logger import log_llm_chat
+from Database.db_doc_title import DocTitleDBManager
 
 def format_citations(docs):
     return [
@@ -138,7 +139,24 @@ def create_api_routes():
             return jsonify({'reranked_documents': reranked})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+    
+    @api.route('/filters', methods=['GET'])
+    @api_key_manager.require_auth_or_api_key
+    def get_filters():
+        try:
+            collection_name = config['QDRANT']['collection_name']  # Replace as needed
+            filters = DocTitleDBManager.load_doctitle_from_db(collection_name)  # Returns ['Doc1', 'Doc2', ...]
         
+            # Transform simple list to dropdown format
+            filter_options = [
+                {"id": i + 1, "name": str(value), "value": str(value)} 
+                for i, value in enumerate(filters)
+            ]
+        
+            return jsonify({"filters": filter_options})
+        except Exception as e:
+            print(f"❌ Error loading filters: {e}")
+            return jsonify({'filters': [], 'error': 'Failed to load filters'}), 500
 
     @api.route('/rag_chat', methods=['POST'])
     @api_key_manager.require_auth_or_api_key
@@ -148,6 +166,7 @@ def create_api_routes():
             messages = data.get('messages', [])
             stream = data.get('stream', True)
             session_id = data.get('session_id') or str(uuid.uuid4())
+            filters = data.get('filters', [])
             if session_id not in session_histories:
                 session_histories[session_id] = []
             if not messages:
@@ -161,14 +180,14 @@ def create_api_routes():
             llm = manager.llm_provider
             search = int(config['DEFAULT']['search_population'])
             top_r = search
-            results = vectordb.search(query, search=search, top_r=top_r)
+            results = vectordb.search(query, search=search, top_r=top_r,filters=filters)
             docs = [doc for doc, score in results] if results and isinstance(results[0], tuple) else results
 
             if not docs:
                 supporting_docs = []
                 context = "No relevant documents found."
             else:
-                top_docs = reranker.rerank(query, docs, int(top_r*0.4))
+                top_docs = reranker.rerank(query, docs, int(top_r*0.3))
                 supporting_docs = top_docs
                 context = "\n\n".join([doc.page_content for doc in supporting_docs])
 

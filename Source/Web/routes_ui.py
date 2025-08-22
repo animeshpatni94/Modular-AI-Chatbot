@@ -12,6 +12,11 @@ def create_ui_routes(auth):
     @auth.oidc_login_required
     def full_ui_screen():
         return send_from_directory('Static', 'full_ui_screen.html')
+    
+    @ui.route('/conai')
+    @auth.oidc_login_required
+    def convoai():
+        return send_from_directory('Static', 'conai.html')
 
     @ui.route('/default_message')
     @auth.oidc_login_required

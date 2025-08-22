@@ -33,5 +33,14 @@
             "cwd": "${workspaceFolder}/Source",
             "console": "integratedTerminal"
         },
+
+        {
+            "name": "Docling Ingestion",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "DataIngestion.docling_ingestor",
+            "cwd": "${workspaceFolder}/Source",
+            "console": "integratedTerminal"
+        },
     ]
 }

@@ -1,9 +1,10 @@
 from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient, models
 from qdrant_client.models import (PointStruct, VectorParams, Distance, SparseVector, NamedVector, NamedSparseVector)
 from qdrant_client.http.models import (Filter, FieldCondition, MatchAny, SparseVectorParams)
 from VectorDbProvider.base_vectordb_provider import BaseVectorDBProvider
 from Database.db_config_loader import load_config_from_db
+from Database.db_doc_title import DocTitleDBManager
 import logging
 import uuid
 from langchain_core.documents import Document
@@ -135,38 +136,53 @@ class QdrantVectorDBProvider(BaseVectorDBProvider):
             return False
         
     def search(self, query: str, search=10, top_r=10, filters=None):
-        try:
-            stop_words = nltk.corpus.stopwords.words("english")
-        except LookupError:
-            nltk.download("stopwords")
-            stop_words = nltk.corpus.stopwords.words("english")
+        # try:
+        #     stop_words = nltk.corpus.stopwords.words("english")
+        # except LookupError:
+        #     nltk.download("stopwords")
+        #     stop_words = nltk.corpus.stopwords.words("english")
 
-        # Extract keyword candidates
-        keywords = self.kw_model.extract_keywords(
-            query,
-            keyphrase_ngram_range=(1, 3),
-            stop_words=stop_words,
-            top_n=10
-        )
-        keyword_terms = [kw[0] for kw in keywords]
-        keyword_scores = [kw[1] for kw in keywords]
+        # Convert UI filters to Qdrant filter format
+        qdrant_filter = None
+        if filters:
+            conditions = []
+            for filter_value in filters:
+                conditions.append(
+                    FieldCondition(
+                        key="metadata.document_title",
+                        match=models.MatchValue(value=filter_value)
+                )
+            )
+            
+            qdrant_filter = models.Filter(should=conditions)
 
-        # Load vocabulary for sparse vector generation
-        try:
-            vocab_dict = VocabDBManager.load_vocab_from_db(self.collection_name)
-            vocab = KeywordVocabulary()
-            vocab.load_from_dict(vocab_dict)
-        except Exception as e:
-            logging.warning(f"No vocab found for collection '{self.collection_name}': {e}")
-            vocab = None
+        # # Extract keyword candidates
+        # keywords = self.kw_model.extract_keywords(
+        #     query,
+        #     keyphrase_ngram_range=(1, 3),
+        #     stop_words=stop_words,
+        #     top_n=10
+        # )
+        # keyword_terms = [kw[0] for kw in keywords]
+        # keyword_scores = [kw[1] for kw in keywords]
+
+        # # Load vocabulary for sparse vector generation
+        # try:
+        #     vocab_dict = VocabDBManager.load_vocab_from_db(self.collection_name)
+        #     vocab = KeywordVocabulary()
+        #     vocab.load_from_dict(vocab_dict)
+        # except Exception as e:
+        #     logging.warning(f"No vocab found for collection '{self.collection_name}': {e}")
+        #     vocab = None
+
 
         sparse_indices = []
         sparse_values = []
-        if vocab:
-            for kw, score in zip(keyword_terms, keyword_scores):
-                if kw in vocab.vocab:
-                    sparse_indices.append(vocab.vocab[kw])
-                    sparse_values.append(score)
+        # if vocab:
+        #     for kw, score in zip(keyword_terms, keyword_scores):
+        #         if kw in vocab.vocab:
+        #             sparse_indices.append(vocab.vocab[kw])
+        #             sparse_values.append(score)
 
         # Dense vector query
         dense_vector = self.embedding_provider.embed_query(query)  # List[float]
@@ -176,9 +192,9 @@ class QdrantVectorDBProvider(BaseVectorDBProvider):
         dense_results = self.client.search(
             collection_name=self.collection_name,
             query_vector=NamedVector(name="text-dense", vector=dense_vector),
-            query_filter=filters,
+            query_filter=qdrant_filter,
             limit=search,
-            with_payload=True
+            with_payload=True,
         )
         for res in dense_results:
             results_by_id[res.id]["score"] += res.score
@@ -193,7 +209,7 @@ class QdrantVectorDBProvider(BaseVectorDBProvider):
             sparse_results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=sparse,
-                query_filter=filters,
+                query_filter=qdrant_filter,
                 limit=search,
                 with_payload=True
             )

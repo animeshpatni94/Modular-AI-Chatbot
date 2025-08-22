@@ -14,8 +14,12 @@ class AzureProvider(BaseLLMProvider):
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             openai_api_key=openai_api_key,
-            max_tokens=2048,
-            temperature=0.5 
+            max_tokens=4096,        # Increased for detailed legal analysis
+            temperature=0.0,        # Set to 0 for maximum determinism
+            top_p=1.0,             # Standard setting for consistency
+            frequency_penalty=0.0,  # No penalty to maintain exact legal language
+            presence_penalty=0.0,   # No penalty to preserve precise terminology
+            stop=None              # No stop sequences for complete responses
         ) 
         super().__init__(chat_llm)
 

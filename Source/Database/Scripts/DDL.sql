@@ -31,3 +31,9 @@ CREATE TABLE VectorVocabularies (
     vocab_json NVARCHAR(MAX) NOT NULL,
     updated_at DATETIME DEFAULT GETDATE()
 );
+
+CREATE TABLE DocTitleCollection (
+    DocumentID INT IDENTITY(1,1) PRIMARY KEY,
+    DocumentTitle NVARCHAR(255) NOT NULL,
+    CollectionName NVARCHAR(255) NOT NULL
+);
