@@ -23,7 +23,7 @@ def create_ui_routes(auth):
     def default_message():
         full_name = session['user'].get('name', 'User')
         first_name = full_name.split()[0] if full_name else 'User'
-        content = f"Hello {first_name}, How can I help?"
+        content = f"Hello {full_name}, How can I help?"
         return jsonify({'role': 'ai', 'content': content})
 
     return ui

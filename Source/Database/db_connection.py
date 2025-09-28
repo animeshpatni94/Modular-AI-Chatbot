@@ -7,7 +7,7 @@ def get_db_connection():
     provider = config['DB'].get('provider', 'sqlserver').lower()
     if provider == 'sqlserver':
         conn_str = (
-            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+            f"DRIVER={{SQL Server}};"
             f"SERVER={config['DB']['server']};"
             f"DATABASE={config['DB']['database']};"
             f"UID={config['DB']['user']};"

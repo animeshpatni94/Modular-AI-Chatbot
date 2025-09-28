@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ConvoAI</title>
-  <link rel="icon" type="image/png" href="/static/favicon.ico" />
-  
+  <title>Legal</title>
+  <link rel="icon" type="image/x-icon" href="/legal/static/favicon.ico" />
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Inter Font for modern look -->
@@ -935,7 +934,7 @@
     <header class="chat-header">
       <h1 class="chat-title">
         <div class="status-indicator"></div>
-        ConvoAI
+        Legal
       </h1>
       <div class="header-controls">
         <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
@@ -971,7 +970,7 @@
             id="user-input"
             rows="1"
             autocomplete="off"
-            placeholder="Message ConvoAI..."
+            placeholder="Message..."
           ></textarea>
         </div>
         
@@ -983,8 +982,8 @@
   </div>
 
   <script>
-    const API_URL = "/rag_chat";
-    const FILTERS_API_URL = "/filters"; // New endpoint for fetching filters
+    const API_URL = "/legal/rag_chat";
+    const FILTERS_API_URL = "/legal/filters"; // New endpoint for fetching filters
     const messagesDiv = document.getElementById("messages");
     const inputBar = document.getElementById("input-bar");
     const userInput = document.getElementById("user-input");
@@ -1473,7 +1472,7 @@
 
     async function loadDefaultMessage() {
       try {
-        const response = await fetch('/default_message');
+        const response = await fetch('/legal/default_message');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         appendMsg(data.role || 'ai', data.content || 'Hello! I\'m ConvoAI. How can I help you today?');

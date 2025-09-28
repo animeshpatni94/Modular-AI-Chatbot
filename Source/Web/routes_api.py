@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, Response, session
+from flask import Blueprint, jsonify, request, Response, session, g
 import uuid
 from collections import defaultdict
 import json
@@ -196,7 +196,15 @@ def create_api_routes():
             system_message = json.loads(prompt_json)
             system_message['content'] = system_message['content'].replace('{context}', context)
             chat_messages = [system_message] + history + [new_user_message]
-            user_id = session['user'].get('preferred_username')
+            # Determine user identification based on authentication method
+            if hasattr(g, 'is_external_user') and g.is_external_user:
+                # External API user
+                user_id = f"api_user_{g.external_api_key[:8]}"  # Use partial API key for identification
+                print(f"Processing request for external API user: {user_id}")
+            else:
+                # Session authenticated user
+                user_id = session['user'].get('preferred_username')
+                print(f"Processing request for session user: {user_id}")
 
             if stream:
                 def generate():

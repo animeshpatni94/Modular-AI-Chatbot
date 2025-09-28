@@ -20,9 +20,27 @@ class ApiKeyManager:
     def require_auth_or_api_key(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            api_key = request.headers.get('x-api-key')
+            # Check session authentication first
             user_authenticated = 'user' in session
-            if user_authenticated or (api_key and api_key in self.valid_keys):
+        
+            if user_authenticated:
+                # User is authenticated via session - regular user
                 return func(*args, **kwargs)
-            return jsonify({'error': 'Unauthorized'}), 401
+        
+            # Check for API key authentication
+            api_key = request.headers.get('x-api-key')
+        
+            if api_key and api_key in self.valid_keys:
+                # External user authenticated via API key
+                # Set a flag to indicate this is an external API user
+                from flask import g
+                g.is_external_user = True
+                g.external_api_key = api_key
+                print("External user logged in via API key")  # Optional logging
+                return func(*args, **kwargs)
+        
+            # Neither session nor valid API key found
+            return jsonify({'error': 'Unauthorized: Valid session or API key required'}), 401
+    
         return wrapper
+
