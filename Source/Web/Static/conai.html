@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Legal</title>
-  <link rel="icon" type="image/x-icon" href="/legal/static/favicon.ico" />
+  <title id="page-title">AI Assistant</title>
+  <link rel="icon" type="image/x-icon" id="favicon-link" />
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Inter Font for modern look -->
@@ -934,7 +934,7 @@
     <header class="chat-header">
       <h1 class="chat-title">
         <div class="status-indicator"></div>
-        Legal
+        <span id="chat-title-text">AI Assistant</span>
       </h1>
       <div class="header-controls">
         <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
@@ -982,8 +982,18 @@
   </div>
 
   <script>
-    const API_URL = "/legal/rag_chat";
-    const FILTERS_API_URL = "/legal/filters"; // New endpoint for fetching filters
+    // Get the base path dynamically
+    const BASE_PATH = window.location.pathname.split('/').slice(0, -1).join('/') || '';
+    const API_URL = `${BASE_PATH}/rag_chat`;
+    const FILTERS_API_URL = `${BASE_PATH}/filters`; // New endpoint for fetching filters
+    
+    // Set favicon dynamically
+    document.getElementById('favicon-link').href = `${BASE_PATH}/static/favicon.ico`;
+    
+    // Set titles dynamically (fallback in case server-side replacement doesn't work)
+    // These will be overridden by server-side replacement if it works
+    document.getElementById('page-title').textContent = 'AI Assistant';
+    document.getElementById('chat-title-text').textContent = 'AI Assistant';
     const messagesDiv = document.getElementById("messages");
     const inputBar = document.getElementById("input-bar");
     const userInput = document.getElementById("user-input");
@@ -1472,7 +1482,7 @@
 
     async function loadDefaultMessage() {
       try {
-        const response = await fetch('/legal/default_message');
+        const response = await fetch(`${BASE_PATH}/default_message`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         appendMsg(data.role || 'ai', data.content || 'Hello! I\'m ConvoAI. How can I help you today?');
