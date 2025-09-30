@@ -186,7 +186,7 @@
       transform: rotate(180deg);
     }
 
-    #new-chat-btn {
+    #sharepoint-btn, #new-chat-btn {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text-secondary);
@@ -201,12 +201,12 @@
       transition: all 0.3s ease;
     }
 
-    #new-chat-btn:hover {
+    #sharepoint-btn:hover, #new-chat-btn:hover {
       background: var(--chat-bg);
       color: var(--text-primary);
     }
 
-    #new-chat-btn .material-icons {
+    #sharepoint-btn .material-icons, #new-chat-btn .material-icons {
       font-size: 18px;
     }
 
@@ -927,6 +927,197 @@
         height: 6px;
       }
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .close-btn:hover {
+      background: var(--chat-bg);
+      color: var(--text-primary);
+    }
+
+    .close-btn .material-icons {
+      font-size: 20px;
+    }
+
+    .modal-body {
+      padding: 24px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--chat-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--citation-bg);
+    }
+
+    .form-group input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      background: var(--surface);
+    }
+
+    .btn-secondary, .btn-primary, .btn-success {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--chat-bg);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      transform: scale(1.02);
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #218838;
+      transform: scale(1.02);
+    }
+
+    .btn-primary:disabled, .btn-success:disabled {
+      background: var(--border);
+      color: var(--text-secondary);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Responsive modal */
+    @media (max-width: 768px) {
+      .modal-content {
+        width: 95%;
+        margin: 20px;
+      }
+
+      .modal-header, .modal-body, .modal-footer {
+        padding: 16px;
+      }
+
+      .modal-footer {
+        flex-direction: column;
+      }
+
+      .btn-secondary, .btn-primary, .btn-success {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -939,6 +1130,10 @@
       <div class="header-controls">
         <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
           <span class="material-icons">light_mode</span>
+        </button>
+        <button id="sharepoint-btn">
+          <span class="material-icons">cloud_upload</span>
+          <span>SharePoint</span>
         </button>
         <button id="new-chat-btn">
           <span class="material-icons">add</span>
@@ -981,6 +1176,51 @@
     </div>
   </div>
 
+  <!-- SharePoint Configuration Modal -->
+  <div id="sharepoint-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>SharePoint Configuration</h2>
+        <button id="close-modal" class="close-btn">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="sharepoint-form">
+          <div class="form-group">
+            <label for="sharepoint-url">SharePoint Site URL</label>
+            <input type="url" id="sharepoint-url" placeholder="https://yourcompany.sharepoint.com/sites/yoursite" required>
+          </div>
+          <div class="form-group">
+            <label for="client-id">Client ID</label>
+            <input type="text" id="client-id" placeholder="Your Azure App Client ID" required>
+          </div>
+          <div class="form-group">
+            <label for="client-secret">Client Secret</label>
+            <input type="password" id="client-secret" placeholder="Your Azure App Client Secret" required>
+          </div>
+          <div class="form-group">
+            <label for="tenant-id">Tenant ID</label>
+            <input type="text" id="tenant-id" placeholder="Your Azure Tenant ID" required>
+          </div>
+          <div class="form-group">
+            <label for="document-library">Document Library</label>
+            <input type="text" id="document-library" placeholder="Documents" value="Documents">
+          </div>
+          <div class="form-group">
+            <label for="folder-path">Folder Path (optional)</label>
+            <input type="text" id="folder-path" placeholder="Leave empty for root folder">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-btn" class="btn-secondary">Cancel</button>
+        <button type="button" id="test-connection-btn" class="btn-primary">Test Connection</button>
+        <button type="button" id="run-ingestion-btn" class="btn-success">Run Data Ingestion</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Get the base path dynamically
     const BASE_PATH = window.location.pathname.split('/').slice(0, -1).join('/') || '';
@@ -999,6 +1239,7 @@
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
     const newChatBtn = document.getElementById("new-chat-btn");
+    const sharepointBtn = document.getElementById("sharepoint-btn");
     const themeToggle = document.getElementById("theme-toggle");
 
     // Multiselect elements
@@ -1011,6 +1252,14 @@
 
     let selectedFilters = [];
     let allFilters = [];
+
+    // SharePoint modal elements
+    const sharepointModal = document.getElementById("sharepoint-modal");
+    const closeModal = document.getElementById("close-modal");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const testConnectionBtn = document.getElementById("test-connection-btn");
+    const runIngestionBtn = document.getElementById("run-ingestion-btn");
+    const sharepointForm = document.getElementById("sharepoint-form");
 
     // Theme management
     function initializeTheme() {
@@ -1333,6 +1582,121 @@
     }
 
     newChatBtn.addEventListener("click", startNewChat);
+
+    // SharePoint modal functionality
+    function openSharepointModal() {
+      sharepointModal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSharepointModal() {
+      sharepointModal.classList.remove('show');
+      document.body.style.overflow = '';
+      sharepointForm.reset();
+    }
+
+    function getSharepointConfig() {
+      return {
+        sharepoint_url: document.getElementById('sharepoint-url').value,
+        client_id: document.getElementById('client-id').value,
+        client_secret: document.getElementById('client-secret').value,
+        tenant_id: document.getElementById('tenant-id').value,
+        document_library: document.getElementById('document-library').value || 'Documents',
+        folder_path: document.getElementById('folder-path').value || ''
+      };
+    }
+
+    async function testSharepointConnection() {
+      const config = getSharepointConfig();
+      
+      // Validate required fields
+      if (!config.sharepoint_url || !config.client_id || !config.client_secret || !config.tenant_id) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      testConnectionBtn.disabled = true;
+      testConnectionBtn.textContent = 'Testing...';
+
+      try {
+        const response = await fetch(`${BASE_PATH}/sharepoint/test_connection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert('Connection successful! ' + (result.message || ''));
+        } else {
+          const error = await response.json();
+          alert('Connection failed: ' + (error.message || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Test connection error:', error);
+        alert('Connection test failed: ' + error.message);
+      } finally {
+        testConnectionBtn.disabled = false;
+        testConnectionBtn.textContent = 'Test Connection';
+      }
+    }
+
+    async function runDataIngestion() {
+      const config = getSharepointConfig();
+      
+      // Validate required fields
+      if (!config.sharepoint_url || !config.client_id || !config.client_secret || !config.tenant_id) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      runIngestionBtn.disabled = true;
+      runIngestionBtn.textContent = 'Running...';
+
+      try {
+        const response = await fetch(`${BASE_PATH}/sharepoint/ingest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert('Data ingestion started successfully! ' + (result.message || ''));
+          closeSharepointModal();
+        } else {
+          const error = await response.json();
+          alert('Data ingestion failed: ' + (error.message || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Data ingestion error:', error);
+        alert('Data ingestion failed: ' + error.message);
+      } finally {
+        runIngestionBtn.disabled = false;
+        runIngestionBtn.textContent = 'Run Data Ingestion';
+      }
+    }
+
+    // Event listeners for SharePoint modal
+    sharepointBtn.addEventListener('click', openSharepointModal);
+    closeModal.addEventListener('click', closeSharepointModal);
+    cancelBtn.addEventListener('click', closeSharepointModal);
+    testConnectionBtn.addEventListener('click', testSharepointConnection);
+    runIngestionBtn.addEventListener('click', runDataIngestion);
+
+    // Close modal when clicking outside
+    sharepointModal.addEventListener('click', (e) => {
+      if (e.target === sharepointModal) {
+        closeSharepointModal();
+      }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sharepointModal.classList.contains('show')) {
+        closeSharepointModal();
+      }
+    });
 
     inputBar.addEventListener("submit", async (e) => {
       e.preventDefault();

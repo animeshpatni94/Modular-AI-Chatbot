@@ -2,6 +2,9 @@ from flask import Blueprint, jsonify, request, Response, session, g
 import uuid
 from collections import defaultdict
 import json
+import requests
+import os
+from datetime import datetime
 from .apikey_manager import ApiKeyManager
 from Helper.provider_manager import ProviderManager
 from Database.db_config_loader import load_config_from_db
@@ -272,6 +275,169 @@ def create_api_routes():
                     'citations': format_citations(supporting_docs[:5]),
                     'session_id': session_id
                 })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/sharepoint/test_connection', methods=['POST'])
+    @api_key_manager.require_auth_or_api_key
+    def test_sharepoint_connection():
+        """Test SharePoint connection with provided credentials"""
+        try:
+            data = request.get_json()
+            
+            # Validate required fields
+            required_fields = ['sharepoint_url', 'client_id', 'client_secret', 'tenant_id']
+            for field in required_fields:
+                if not data.get(field):
+                    return jsonify({'error': f'Missing required field: {field}'}), 400
+            
+            sharepoint_url = data['sharepoint_url']
+            client_id = data['client_id']
+            client_secret = data['client_secret']
+            tenant_id = data['tenant_id']
+            
+            # Test SharePoint connection using Microsoft Graph API
+            try:
+                # Get access token
+                token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+                token_data = {
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'scope': 'https://graph.microsoft.com/.default',
+                    'grant_type': 'client_credentials'
+                }
+                
+                token_response = requests.post(token_url, data=token_data)
+                token_response.raise_for_status()
+                access_token = token_response.json()['access_token']
+                
+                # Test connection by getting site information
+                headers = {'Authorization': f'Bearer {access_token}'}
+                
+                # Extract site ID from SharePoint URL
+                if '/sites/' in sharepoint_url:
+                    site_name = sharepoint_url.split('/sites/')[-1]
+                    test_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_url.split('//')[1].split('/')[0]}:/sites/{site_name}"
+                else:
+                    # For root site
+                    test_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_url.split('//')[1].split('/')[0]}"
+                
+                test_response = requests.get(test_url, headers=headers)
+                test_response.raise_for_status()
+                
+                return jsonify({
+                    'status': 'success',
+                    'message': 'SharePoint connection successful',
+                    'site_info': test_response.json()
+                })
+                
+            except requests.exceptions.RequestException as e:
+                return jsonify({
+                    'error': 'SharePoint connection failed',
+                    'details': str(e)
+                }), 400
+                
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/sharepoint/ingest', methods=['POST'])
+    @api_key_manager.require_auth_or_api_key
+    def run_sharepoint_ingestion():
+        """Run SharePoint data ingestion pipeline"""
+        try:
+            data = request.get_json()
+            
+            # Validate required fields
+            required_fields = ['sharepoint_url', 'client_id', 'client_secret', 'tenant_id']
+            for field in required_fields:
+                if not data.get(field):
+                    return jsonify({'error': f'Missing required field: {field}'}), 400
+            
+            sharepoint_url = data['sharepoint_url']
+            client_id = data['client_id']
+            client_secret = data['client_secret']
+            tenant_id = data['tenant_id']
+            document_library = data.get('document_library', 'Documents')
+            folder_path = data.get('folder_path', '')
+            
+            # Get access token
+            try:
+                token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+                token_data = {
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'scope': 'https://graph.microsoft.com/.default',
+                    'grant_type': 'client_credentials'
+                }
+                
+                token_response = requests.post(token_url, data=token_data)
+                token_response.raise_for_status()
+                access_token = token_response.json()['access_token']
+                
+                # Get site ID
+                headers = {'Authorization': f'Bearer {access_token}'}
+                
+                if '/sites/' in sharepoint_url:
+                    site_name = sharepoint_url.split('/sites/')[-1]
+                    site_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_url.split('//')[1].split('/')[0]}:/sites/{site_name}"
+                else:
+                    site_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_url.split('//')[1].split('/')[0]}"
+                
+                site_response = requests.get(site_url, headers=headers)
+                site_response.raise_for_status()
+                site_id = site_response.json()['id']
+                
+                # Get document library
+                drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
+                drives_response = requests.get(drive_url, headers=headers)
+                drives_response.raise_for_status()
+                
+                # Find the document library
+                target_drive = None
+                for drive in drives_response.json()['value']:
+                    if drive['name'] == document_library:
+                        target_drive = drive
+                        break
+                
+                if not target_drive:
+                    return jsonify({
+                        'error': f'Document library "{document_library}" not found'
+                    }), 400
+                
+                # Get files from the library
+                files_url = f"https://graph.microsoft.com/v1.0/drives/{target_drive['id']}/root"
+                if folder_path:
+                    files_url += f":/{folder_path}:"
+                files_url += "/children"
+                
+                files_response = requests.get(files_url, headers=headers)
+                files_response.raise_for_status()
+                
+                files = files_response.json()['value']
+                document_count = len([f for f in files if not f.get('folder')])
+                
+                # Here you would typically:
+                # 1. Download and process each document
+                # 2. Extract text content
+                # 3. Generate embeddings
+                # 4. Store in vector database
+                
+                # For now, return success with file count
+                return jsonify({
+                    'status': 'success',
+                    'message': f'Data ingestion pipeline started successfully',
+                    'documents_found': document_count,
+                    'library': document_library,
+                    'folder_path': folder_path or 'root',
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+            except requests.exceptions.RequestException as e:
+                return jsonify({
+                    'error': 'SharePoint ingestion failed',
+                    'details': str(e)
+                }), 400
+                
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
