@@ -450,6 +450,39 @@
       width: auto; /* Allow content to determine width */
     }
 
+    .multiselect-search {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--dropdown-bg);
+    }
+
+    .multiselect-search input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      background: var(--chat-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    .multiselect-search input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--citation-bg);
+    }
+
+    .multiselect-search input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .multiselect-options {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
     .multiselect-dropdown.show {
       display: block;
     }
@@ -820,6 +853,10 @@
         width: 100%;
       }
 
+      .multiselect-search input {
+        font-size: 16px; /* Prevent zoom on iOS */
+      }
+
       .input-wrapper {
         width: 100%;
       }
@@ -1156,7 +1193,12 @@
             <span class="material-icons multiselect-arrow" id="multiselect-arrow">expand_more</span>
           </div>
           <div class="multiselect-dropdown" id="multiselect-dropdown">
-            <!-- Options will be populated dynamically -->
+            <div class="multiselect-search">
+              <input type="text" id="multiselect-search-input" placeholder="Search filters..." autocomplete="off">
+            </div>
+            <div class="multiselect-options" id="multiselect-options">
+              <!-- Options will be populated dynamically -->
+            </div>
           </div>
         </div>
         
@@ -1249,6 +1291,8 @@
     const multiselectArrow = document.getElementById("multiselect-arrow");
     const selectedChips = document.getElementById("selected-chips");
     const labelText = multiselectLabel.querySelector(".label-text");
+    const multiselectSearchInput = document.getElementById("multiselect-search-input");
+    const multiselectOptions = document.getElementById("multiselect-options");
 
     let selectedFilters = [];
     let allFilters = [];
@@ -1322,7 +1366,7 @@
 
     // Populate multiselect dropdown
     function populateMultiselect() {
-      multiselectDropdown.innerHTML = '';
+      multiselectOptions.innerHTML = '';
       
       // Add "Select All" option
       const selectAllOption = document.createElement('div');
@@ -1334,7 +1378,7 @@
         <span>Select All</span>
       `;
       selectAllOption.addEventListener('click', toggleSelectAll);
-      multiselectDropdown.appendChild(selectAllOption);
+      multiselectOptions.appendChild(selectAllOption);
 
       // Add individual options
       allFilters.forEach(filter => {
@@ -1348,7 +1392,7 @@
           <span>${filter.name}</span>
         `;
         option.addEventListener('click', () => toggleFilter(filter.value));
-        multiselectDropdown.appendChild(option);
+        multiselectOptions.appendChild(option);
       });
     }
 
@@ -1366,6 +1410,11 @@
       multiselectDropdown.classList.add('show');
       multiselectTrigger.classList.add('active');
       multiselectArrow.classList.add('rotated');
+      // Clear search and show all options
+      multiselectSearchInput.value = '';
+      filterOptions('');
+      // Focus the search input
+      setTimeout(() => multiselectSearchInput.focus(), 100);
     }
 
     function closeDropdown() {
@@ -1398,34 +1447,50 @@
       updateMultiselectUI();
     }
 
+    // Filter options based on search term
+    function filterOptions(searchTerm) {
+      const options = multiselectOptions.querySelectorAll('.multiselect-option');
+      const term = searchTerm.toLowerCase().trim();
+      
+      options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        const isVisible = text.includes(term);
+        option.style.display = isVisible ? 'flex' : 'none';
+      });
+    }
+
     // Update multiselect UI
     function updateMultiselectUI() {
       // Update checkboxes
       allFilters.forEach(filter => {
         const checkbox = document.getElementById(`checkbox-${filter.value}`);
-        const checkIcon = checkbox.querySelector('.material-icons');
-        const isSelected = selectedFilters.includes(filter.value);
-        
-        if (isSelected) {
-          checkbox.classList.add('checked');
-          checkIcon.style.display = 'block';
-        } else {
-          checkbox.classList.remove('checked');
-          checkIcon.style.display = 'none';
+        if (checkbox) {
+          const checkIcon = checkbox.querySelector('.material-icons');
+          const isSelected = selectedFilters.includes(filter.value);
+          
+          if (isSelected) {
+            checkbox.classList.add('checked');
+            checkIcon.style.display = 'block';
+          } else {
+            checkbox.classList.remove('checked');
+            checkIcon.style.display = 'none';
+          }
         }
       });
 
       // Update select all checkbox
       const selectAllCheckbox = document.getElementById('select-all-checkbox');
-      const selectAllIcon = selectAllCheckbox.querySelector('.material-icons');
-      const isAllSelected = selectedFilters.length === allFilters.length;
-      
-      if (isAllSelected && allFilters.length > 0) {
-        selectAllCheckbox.classList.add('checked');
-        selectAllIcon.style.display = 'block';
-      } else {
-        selectAllCheckbox.classList.remove('checked');
-        selectAllIcon.style.display = 'none';
+      if (selectAllCheckbox) {
+        const selectAllIcon = selectAllCheckbox.querySelector('.material-icons');
+        const isAllSelected = selectedFilters.length === allFilters.length;
+        
+        if (isAllSelected && allFilters.length > 0) {
+          selectAllCheckbox.classList.add('checked');
+          selectAllIcon.style.display = 'block';
+        } else {
+          selectAllCheckbox.classList.remove('checked');
+          selectAllIcon.style.display = 'none';
+        }
       }
 
       // Update label and chips
@@ -1470,6 +1535,16 @@
 
     // Event listeners for multiselect
     multiselectTrigger.addEventListener('click', toggleDropdown);
+
+    // Search functionality
+    multiselectSearchInput.addEventListener('input', (e) => {
+      filterOptions(e.target.value);
+    });
+
+    // Prevent dropdown from closing when clicking on search input
+    multiselectSearchInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
